@@ -15,6 +15,16 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowReact", policy =>
+    {
+        policy.WithOrigins("http://localhost:5173") // La URL exacta de tu frontend
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -43,6 +53,8 @@ app.MapGet("/weatherforecast", () =>
     return forecast;
 })
 .WithName("GetWeatherForecast");
+
+app.UseCors("AllowReact");
 
 app.MapControllers();
 

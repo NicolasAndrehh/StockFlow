@@ -2,7 +2,7 @@ POST http://localhost:5082/api/locations
 Content-Type: application/json
 
 {
-  "codigo": "S01",
+  "codigo": "S02",
   "nombre": "Sede Chapinero",
   "direccion": "Cra 13 # 54-21"
-}
+}   

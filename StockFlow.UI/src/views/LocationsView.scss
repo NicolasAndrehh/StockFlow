@@ -1,0 +1,191 @@
+// ==========================================================================
+// LocationsView.scss
+// Estilos basados en el mockup "Gestión de sedes" (HU-02)
+// ==========================================================================
+
+$bg: #14110d;
+$panel: #1e1912;
+$panel-2: #241e15;
+$raised: #2a2318;
+$border: #3a3020;
+$accent: #e3a857;
+$accent-dim: #8a6a3a;
+$teal: #4fa894;
+$red: #c1573a;
+$text: #f1e9dd;
+$text-dim: #a99a86;
+$text-faint: #7a6c58;
+
+$font-display: 'Fraunces', serif;
+$font-sans: 'IBM Plex Sans', sans-serif;
+$font-mono: 'IBM Plex Mono', monospace;
+
+.locations-view {
+  background: $bg;
+  color: $text;
+  font-family: $font-sans;
+  padding: 34px 40px;
+  min-height: 100vh;
+
+  &__title {
+    font-family: $font-display;
+    font-size: 26px;
+    margin: 0 0 22px 0;
+    color: $text;
+  }
+
+  &__layout {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 20px;
+
+    @media (max-width: 900px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  // ---------------- Tabla de sedes ----------------
+  &__frame {
+    background: $panel;
+    border: 1px solid $border;
+    border-radius: 14px;
+    box-shadow: 0 30px 60px -30px rgba(0, 0, 0, .7);
+    overflow: hidden;
+  }
+
+  &__frame-body {
+    padding: 26px;
+  }
+
+  &__subtitle {
+    font-family: $font-display;
+    font-size: 18px;
+    margin: 0 0 16px 0;
+  }
+
+  &__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+
+    th {
+      text-align: left;
+      font-family: $font-mono;
+      font-size: 10.5px;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      color: $text-faint;
+      padding: 0 10px 10px 10px;
+      border-bottom: 1px solid $border;
+    }
+
+    td {
+      padding: 11px 10px;
+      border-bottom: 1px solid $border;
+      color: $text-dim;
+
+      &.strong {
+        color: $text;
+        font-weight: 500;
+      }
+
+      &.mono {
+        font-family: $font-mono;
+        color: $text;
+      }
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+  }
+
+  // ---------------- Panel del formulario ----------------
+  &__panel {
+    background: $panel-2;
+    border: 1px solid $border;
+    border-radius: 10px;
+    padding: 18px;
+    align-self: start;
+  }
+
+  &__panel-title {
+    font-family: $font-display;
+    font-size: 18px;
+    margin: 0 0 16px 0;
+  }
+
+  &__form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      color: $text-faint;
+      font-family: $font-mono;
+    }
+
+    input {
+      background: $panel;
+      border: 1px solid $border;
+      border-radius: 7px;
+      padding: 9px 11px;
+      color: $text;
+      font-size: 13.5px;
+      font-family: $font-sans;
+
+      &:focus {
+        outline: none;
+        border-color: $accent-dim;
+      }
+
+      &::placeholder {
+        color: $text-faint;
+      }
+    }
+  }
+
+  // ---------------- Botones ----------------
+  &__btn {
+    font-family: $font-sans;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 9px 16px;
+    border-radius: 8px;
+    border: 1px solid $border;
+    background: $raised;
+    color: $text;
+    cursor: pointer;
+
+    &--primary {
+      background: $accent;
+      color: #1c1508;
+      border: 1px solid $accent;
+      width: 100%;
+      padding: 10px;
+    }
+  }
+
+  // ---------------- Mensaje de estado ----------------
+  &__message {
+    font-weight: 600;
+    margin-top: 4px;
+
+    &--success {
+      color: $teal;
+    }
+
+    &--error {
+      color: $red;
+    }
+  }
+}
