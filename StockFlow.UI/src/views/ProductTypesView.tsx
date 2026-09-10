@@ -1,24 +1,22 @@
 import { useState, useEffect } from 'react';
-import './LocationsView.scss';
+import './LocationsView.scss'; 
 
-interface Location {
+interface ProductType {
   id?: number;
-  codigo: string;
   nombre: string;
-  direccion: string;
 }
 
-export default function LocationsView() {
-  const [formData, setFormData] = useState<Location>({ codigo: '', nombre: '', direccion: '' });
+export default function ProductTypesView() {
+  const [formData, setFormData] = useState<ProductType>({ nombre: '' });
   const [message, setMessage] = useState<string>('');
-  const [locations, setLocations] = useState<Location[]>([]);
+  const [types, setTypes] = useState<ProductType[]>([]);
 
-  const fetchLocations = async () => {
+  const fetchTypes = async () => {
     try {
-      const response = await fetch('http://localhost:5082/api/locations');
+      const response = await fetch('http://localhost:5082/api/product-types');
       if (response.ok) {
         const data = await response.json();
-        setLocations(data);
+        setTypes(data);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -26,17 +24,16 @@ export default function LocationsView() {
   };
 
   useEffect(() => {
-    fetchLocations();
+    fetchTypes();
   }, []);
 
-  const handleEditClick = (loc: Location) => {
-    setFormData(loc);
-    setMessage(''); 
+  const handleEditClick = (type: ProductType) => {
+    setFormData(type);
+    setMessage('');
   };
 
-  // El botón ahora solo limpia el formulario para prepararlo para un POST
   const handleNewClick = () => {
-    setFormData({ codigo: '', nombre: '', direccion: '' });
+    setFormData({ nombre: '' });
     setMessage('');
   };
 
@@ -45,8 +42,8 @@ export default function LocationsView() {
     
     const isEditing = !!formData.id; 
     const url = isEditing 
-      ? `http://localhost:5082/api/locations/${formData.id}` 
-      : 'http://localhost:5082/api/locations';
+      ? `http://localhost:5082/api/product-types/${formData.id}` 
+      : 'http://localhost:5082/api/product-types';
     const method = isEditing ? 'PUT' : 'POST';
 
     try {
@@ -66,13 +63,13 @@ export default function LocationsView() {
       }
 
       if (!response.ok) {
-        setMessage((data && data.message) ? data.message : 'Error saving location.');
+        setMessage((data && data.message) ? data.message : 'Error saving type.');
         return;
       }
 
-      setFormData({ codigo: '', nombre: '', direccion: '' });
-      fetchLocations();
-      setMessage(isEditing ? 'Location updated successfully!' : 'Location created successfully!');
+      setFormData({ nombre: '' });
+      fetchTypes();
+      setMessage(isEditing ? 'Type updated successfully!' : 'Type created successfully!');
 
     } catch (error) {
       setMessage('Network error. Is the backend running?');
@@ -81,30 +78,29 @@ export default function LocationsView() {
 
   return (
     <div className="locations-view">
-      <h2 className="locations-view__title">Location Management</h2>
+      <h2 className="locations-view__title">Product Types Management</h2>
 
       <div className="locations-view__layout">
         <div className="locations-view__frame">
           <div className="locations-view__frame-body">
-            <h3 className="locations-view__subtitle">Registered Locations</h3>
+            <h3 className="locations-view__subtitle">Product Types</h3>
             <table className="locations-view__table">
               <thead>
                 <tr>
-                  <th>Code</th>
-                  <th>Name</th>
-                  <th>Address</th>
-                  <th>Actions</th>
+                  <th>TYPE</th>
+                  <th>ASSOCIATED PRODUCTS</th>
+                  <th>ACTIONS</th>
                 </tr>
               </thead>
               <tbody>
-                {locations.map((loc, index) => (
+                {types.map((type, index) => (
                   <tr key={index}>
-                    <td className="mono">{loc.codigo}</td>
-                    <td className="strong">{loc.nombre}</td>
-                    <td>{loc.direccion}</td>
+                    <td className="strong">{type.nombre}</td>
+                    {/* Placeholder estático hasta que hagamos la HU-03 */}
+                    <td>0</td> 
                     <td>
                       <button 
-                        onClick={() => handleEditClick(loc)} 
+                        onClick={() => handleEditClick(type)} 
                         className="locations-view__btn-text"
                         style={{ background: 'none', border: 'none', color: '#007bff', cursor: 'pointer', textDecoration: 'underline' }}
                       >
@@ -121,60 +117,35 @@ export default function LocationsView() {
                 onClick={handleNewClick} 
                 className="locations-view__btn locations-view__btn--primary"
               >
-                + New Location
+                + New Type
               </button>
             </div>
           </div>
         </div>
 
-        {/* El panel vuelve a estar estático y siempre visible */}
         <div className="locations-view__panel">
           <h3 className="locations-view__panel-title">
-            {formData.id ? 'Edit Location' : 'New Location'}
+            {formData.id ? 'Edit Type' : 'New Type'}
           </h3>
           <form onSubmit={handleSubmit} className="locations-view__form">
+            
             <div className="locations-view__field">
-              <label htmlFor="codigo">Code (unique)</label>
-              <input
-                id="codigo"
-                type="text"
-                placeholder="S04"
-                value={formData.codigo}
-                onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="locations-view__field">
-              <label htmlFor="nombre">Name</label>
+            <label htmlFor="nombre">TYPE NAME</label>
               <input
                 id="nombre"
                 type="text"
-                placeholder="Uptown Branch"
+                placeholder="Ej. Beer, Wine, Soft Drink"
                 value={formData.nombre}
                 onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                 required
               />
             </div>
 
-            <div className="locations-view__field">
-              <label htmlFor="direccion">Address</label>
-              <input
-                id="direccion"
-                type="text"
-                placeholder="123 Main St"
-                value={formData.direccion}
-                onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
-                required
-              />
-            </div>
-
             <div style={{ display: 'flex', gap: '10px' }}>
               <button type="submit" className="locations-view__btn locations-view__btn--primary">
-                {formData.id ? 'Update Location' : 'Save Location'}
+                {formData.id ? 'Update Type' : 'Save Type'}
               </button>
               
-              {/* Si estamos editando, mostramos un botón para cancelar y limpiar todo */}
               {formData.id && (
                 <button 
                   type="button" 
