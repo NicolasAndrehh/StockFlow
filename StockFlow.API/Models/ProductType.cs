@@ -1,8 +1,8 @@
 namespace StockFlow.API.Models
 {
-    public class TipoProducto
+    public class ProductType
     {
         public int Id { get; set; }
-        public string Nombre { get; set; }
+        public string Name { get; set; }
     }
 }

@@ -8,15 +8,19 @@ namespace StockFlow.API.Data
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
         {
         }
-
-        // Estas son tus tablas
-        public DbSet<Sede> Sedes { get; set; }
-        public DbSet<Usuario> Usuarios { get; set; }
-        public DbSet<Producto> Productos { get; set; }
-        public DbSet<Proveedor> Proveedores { get; set; }
-        public DbSet<TipoProducto> TiposProducto { get; set; }
-        public DbSet<Mesa> Mesas { get; set; }
-        public DbSet<Pedido> Pedidos { get; set; }
-        public DbSet<DetallePedido> DetallesPedido { get; set; }
+        public DbSet<Location> Locations { get; set; }
+        public DbSet<User> Users { get; set; }
+        public DbSet<AuditRecord> AuditRecords { get; set; }
+        public DbSet<Supplier> Suppliers { get; set; }
+        public DbSet<ProductType> ProductTypes { get; set; }
+        public DbSet<Product> Products { get; set; }
+        public DbSet<Order> Orders { get; set; }
+        public DbSet<Payment> Payments { get; set; }
+        public DbSet<Table> Tables { get; set; }
+        public DbSet<LocationInventory> LocationInventories { get; set; }
+        public DbSet<Invoice> Invoices { get; set; }
+        public DbSet<OrderDetail> OrderDetails { get; set; }
+        public DbSet<InventoryCheck> InventoryChecks { get; set; }
+        public DbSet<InventoryCheckDetail> InventoryCheckDetails { get; set; }
     }
 }

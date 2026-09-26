@@ -1,8 +1,8 @@
 namespace StockFlow.API.Models 
 {
-    public class Proveedor 
+    public class Supplier 
     {
         public int Id { get; set; }
-        public string Nombre { get; set; }
+        public string Name { get; set; }
     }
 }
