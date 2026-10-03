@@ -1,0 +1,23 @@
+.ticketLine {
+  display: flex;
+  justify-content: space-between;
+  font-size: .86rem;
+  padding: .32rem 0;
+}
+
+.ticketTotal {
+  display: flex;
+  justify-content: space-between;
+  font-size: 1.15rem;
+  font-weight: 700;
+  padding-top: .65rem;
+  margin-top: .45rem;
+  border-top: 1px solid var(--line);
+  color: var(--cyan);
+}
+
+.empty {
+  color: var(--dim);
+  font-size: .85rem;
+  padding: 1rem 0;
+}

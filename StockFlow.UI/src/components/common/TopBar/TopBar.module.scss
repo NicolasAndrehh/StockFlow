@@ -1,0 +1,43 @@
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .9rem 1.4rem;
+  background: rgba(10,10,13,.75);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--line);
+  padding-top: calc(.9rem + env(safe-area-inset-top, 0px));
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.id {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+
+  .mark {
+    font-weight: 700;
+    font-size: 1.15rem;
+    em { font-style: normal; color: var(--blue); }
+  }
+}
+
+.chip {
+  font-size: .72rem;
+  padding: .28rem .65rem;
+  border-radius: 20px;
+  background: var(--panel2);
+  border: 1px solid var(--line2);
+  color: var(--cyan);
+  font-weight: 500;
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: .9rem;
+  font-size: .85rem;
+  color: var(--muted);
+}

@@ -1,0 +1,22 @@
+.status {
+  font-size: .74rem;
+  padding: .18rem .6rem;
+  border-radius: 20px;
+  display: inline-block;
+  font-weight: 600;
+}
+
+.available, .active, .closed {
+  background: var(--green-tint);
+  color: var(--green);
+}
+
+.occupied, .open {
+  background: var(--orange-tint);
+  color: var(--orange);
+}
+
+.inactive {
+  background: var(--panel2);
+  color: var(--dim);
+}

@@ -1,0 +1,16 @@
+.payOpt {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  padding: .6rem .75rem;
+  border: 1px solid var(--line2);
+  border-radius: 10px;
+  margin-bottom: .5rem;
+  font-size: .88rem;
+  cursor: pointer;
+}
+
+.on {
+  border-color: var(--blue);
+  background: var(--blue-tint);
+}

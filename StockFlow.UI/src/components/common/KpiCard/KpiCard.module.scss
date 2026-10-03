@@ -1,0 +1,24 @@
+.kpi {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 1.05rem 1.3rem;
+  flex: 1;
+  min-width: 150px;
+  box-shadow: var(--sh);
+}
+
+.lbl {
+  font-size: .72rem;
+  color: var(--dim);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.val {
+  font-size: 1.55rem;
+  font-weight: 700;
+  margin-top: .25rem;
+  color: var(--cyan);
+}

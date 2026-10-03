@@ -1,0 +1,41 @@
+.btn {
+  font-family: var(--sans);
+  cursor: pointer;
+  font-weight: 600;
+  border-radius: 10px;
+  font-size: .88rem;
+  border: none;
+  padding: .65rem 1rem;
+}
+
+.primary {
+  background: var(--blue);
+  color: #fff;
+  width: 100%;
+  box-shadow: 0 4px 20px rgba(10,132,255,.35);
+
+  &:hover { background: var(--blue-hov); }
+  &:disabled { background: var(--line2); color: var(--dim); box-shadow: none; cursor: not-allowed; }
+}
+
+.ghost {
+  background: none;
+  border: 1px solid var(--line2);
+  color: var(--ink);
+  width: auto;
+  box-shadow: none;
+
+  &:hover { background: var(--panel2); }
+}
+
+.mini {
+  font-size: .78rem;
+  background: none;
+  border: 1px solid var(--line2);
+  color: var(--ink);
+  padding: .28rem .65rem;
+  border-radius: 8px;
+  font-weight: 500;
+
+  &:hover { background: var(--panel2); border-color: var(--blue); color: var(--cyan); }
+}

@@ -12,7 +12,7 @@ using StockFlow.API.Data;
 namespace StockFlow.API.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260926054452_InitialCreate")]
+    [Migration("20260926202419_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -366,22 +366,26 @@ namespace StockFlow.API.Migrations
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Code")
+                        .IsRequired()
                         .HasColumnType("longtext");
 
                     b.Property<int?>("LocationId")
                         .HasColumnType("int");
 
                     b.Property<string>("Name")
+                        .IsRequired()
                         .HasColumnType("longtext");
 
                     b.Property<string>("PasswordHash")
+                        .IsRequired()
                         .HasColumnType("longtext");
 
                     b.Property<string>("Role")
+                        .IsRequired()
                         .HasColumnType("longtext");
 
-                    b.Property<string>("Status")
-                        .HasColumnType("longtext");
+                    b.Property<bool>("Status")
+                        .HasColumnType("tinyint(1)");
 
                     b.HasKey("Id");
 

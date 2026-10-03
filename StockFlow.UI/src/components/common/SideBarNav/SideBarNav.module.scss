@@ -1,0 +1,41 @@
+.nav {
+  background: var(--bg);
+  border-right: 1px solid var(--line);
+  padding: 1.3rem .9rem;
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+}
+
+.navBtn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--muted);
+  padding: .55rem .75rem;
+  border-radius: 10px;
+  font-size: .9rem;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+
+  &:hover { background: var(--panel2); color: var(--ink); }
+}
+
+.on {
+  background: var(--blue-tint);
+  color: var(--cyan);
+}
+
+.grp {
+  font-size: .68rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--dim);
+  font-weight: 600;
+  margin: 1.1rem 0 .4rem .75rem;
+
+  &:first-child { margin-top: 0; }
+}

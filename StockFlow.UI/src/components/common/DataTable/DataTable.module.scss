@@ -1,0 +1,25 @@
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .87rem;
+
+  th {
+    text-align: left;
+    color: var(--dim);
+    font-weight: 600;
+    font-size: .7rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    padding: .55rem .6rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  td {
+    padding: .65rem .6rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  tr:last-child td {
+    border-bottom: none;
+  }
+}

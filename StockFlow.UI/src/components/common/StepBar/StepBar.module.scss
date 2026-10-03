@@ -1,0 +1,17 @@
+.steps {
+  display: flex;
+  gap: .4rem;
+  margin-bottom: 1.4rem;
+
+  span {
+    flex: 1;
+    height: 4px;
+    background: var(--line);
+    border-radius: 3px;
+  }
+}
+
+.on {
+  background: var(--blue);
+  box-shadow: 0 0 10px rgba(10,132,255,.6);
+}

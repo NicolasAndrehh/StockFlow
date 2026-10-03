@@ -19,7 +19,15 @@ namespace StockFlow.API.Controllers
         [HttpGet]
         public async Task<IActionResult> GetProductTypes()
         {
-            var types = await _context.ProductTypes.ToListAsync();
+            var types = await _context.ProductTypes
+                .Select(t => new
+                {
+                    t.Id,
+                    t.Name,
+                    AssociatedProducts = t.Products.Count()
+                })
+                .ToListAsync();
+
             return Ok(types);
         }
 

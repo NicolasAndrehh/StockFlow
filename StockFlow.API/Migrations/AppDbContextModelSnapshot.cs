@@ -46,7 +46,7 @@ namespace StockFlow.API.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("AuditRecords");
+                    b.ToTable("AuditRecords", (string)null);
                 });
 
             modelBuilder.Entity("StockFlow.API.Models.InventoryCheck", b =>
@@ -72,7 +72,7 @@ namespace StockFlow.API.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("InventoryChecks");
+                    b.ToTable("InventoryChecks", (string)null);
                 });
 
             modelBuilder.Entity("StockFlow.API.Models.InventoryCheckDetail", b =>
@@ -98,7 +98,7 @@ namespace StockFlow.API.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.ToTable("InventoryCheckDetails");
+                    b.ToTable("InventoryCheckDetails", (string)null);
                 });
 
             modelBuilder.Entity("StockFlow.API.Models.Invoice", b =>
@@ -122,7 +122,7 @@ namespace StockFlow.API.Migrations
 
                     b.HasIndex("PaymentId");
 
-                    b.ToTable("Invoices");
+                    b.ToTable("Invoices", (string)null);
                 });
 
             modelBuilder.Entity("StockFlow.API.Models.Location", b =>
@@ -144,7 +144,7 @@ namespace StockFlow.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Locations");
+                    b.ToTable("Locations", (string)null);
                 });
 
             modelBuilder.Entity("StockFlow.API.Models.LocationInventory", b =>
@@ -170,7 +170,7 @@ namespace StockFlow.API.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.ToTable("LocationInventories");
+                    b.ToTable("LocationInventories", (string)null);
                 });
 
             modelBuilder.Entity("StockFlow.API.Models.Order", b =>
@@ -199,7 +199,7 @@ namespace StockFlow.API.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Orders");
+                    b.ToTable("Orders", (string)null);
                 });
 
             modelBuilder.Entity("StockFlow.API.Models.OrderDetail", b =>
@@ -228,7 +228,7 @@ namespace StockFlow.API.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.ToTable("OrderDetails");
+                    b.ToTable("OrderDetails", (string)null);
                 });
 
             modelBuilder.Entity("StockFlow.API.Models.Payment", b =>
@@ -260,7 +260,7 @@ namespace StockFlow.API.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Payments");
+                    b.ToTable("Payments", (string)null);
                 });
 
             modelBuilder.Entity("StockFlow.API.Models.Product", b =>
@@ -295,7 +295,7 @@ namespace StockFlow.API.Migrations
 
                     b.HasIndex("SupplierId");
 
-                    b.ToTable("Products");
+                    b.ToTable("Products", (string)null);
                 });
 
             modelBuilder.Entity("StockFlow.API.Models.ProductType", b =>
@@ -311,7 +311,7 @@ namespace StockFlow.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("ProductTypes");
+                    b.ToTable("ProductTypes", (string)null);
                 });
 
             modelBuilder.Entity("StockFlow.API.Models.Supplier", b =>
@@ -327,7 +327,7 @@ namespace StockFlow.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Suppliers");
+                    b.ToTable("Suppliers", (string)null);
                 });
 
             modelBuilder.Entity("StockFlow.API.Models.Table", b =>
@@ -351,7 +351,7 @@ namespace StockFlow.API.Migrations
 
                     b.HasIndex("LocationId");
 
-                    b.ToTable("Tables");
+                    b.ToTable("Tables", (string)null);
                 });
 
             modelBuilder.Entity("StockFlow.API.Models.User", b =>
@@ -363,28 +363,32 @@ namespace StockFlow.API.Migrations
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Code")
+                        .IsRequired()
                         .HasColumnType("longtext");
 
                     b.Property<int?>("LocationId")
                         .HasColumnType("int");
 
                     b.Property<string>("Name")
+                        .IsRequired()
                         .HasColumnType("longtext");
 
                     b.Property<string>("PasswordHash")
+                        .IsRequired()
                         .HasColumnType("longtext");
 
                     b.Property<string>("Role")
+                        .IsRequired()
                         .HasColumnType("longtext");
 
-                    b.Property<string>("Status")
-                        .HasColumnType("longtext");
+                    b.Property<bool>("Status")
+                        .HasColumnType("tinyint(1)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("LocationId");
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", (string)null);
                 });
 
             modelBuilder.Entity("StockFlow.API.Models.AuditRecord", b =>

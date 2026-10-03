@@ -1,17 +1,21 @@
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using StockFlow.API.Data;
+using StockFlow.API.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Leer la cadena de conexión del appsettings.json
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+var connectionString = "Server=localhost;Port=3306;Database=StockFlowDB;Uid=root;Pwd=Nicolas2010;";
 
-// Conectar el AppDbContext con MySQL usando Pomelo
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+    options.UseMySql(
+        connectionString,
+        new MySqlServerVersion(new Version(8, 0, 0))
+    ));
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
 
@@ -19,11 +23,34 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReact", policy =>
     {
-        policy.WithOrigins("http://localhost:5173") // La URL exacta de tu frontend
+        policy.WithOrigins("http://localhost:5173")
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
 });
+
+// --- Autenticación JWT ---
+var jwtKey = builder.Configuration["Jwt:Key"]!;
+var key = Encoding.UTF8.GetBytes(jwtKey);
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(key),
+            ValidateIssuer = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidateAudience = true,
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            ValidateLifetime = true,
+        };
+    });
+
+builder.Services.AddAuthorization();
+builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
+// --- Fin autenticación JWT ---
 
 var app = builder.Build();
 
@@ -55,6 +82,10 @@ app.MapGet("/weatherforecast", () =>
 .WithName("GetWeatherForecast");
 
 app.UseCors("AllowReact");
+
+// El orden importa: Authentication antes que Authorization, y ambos antes de MapControllers
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 

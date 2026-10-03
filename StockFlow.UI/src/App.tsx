@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import LocationsView from './views/LocationsView'; 
-import ProductTypesView from './views/ProductTypesView';
+import LocationsView from './components/features/Locations/LocationsView'; 
+import ProductTypesView from './components/features/ProductTypes/ProductTypesView';
 
 export default function App() {
   // Estado para controlar qué pantalla se está mostrando
