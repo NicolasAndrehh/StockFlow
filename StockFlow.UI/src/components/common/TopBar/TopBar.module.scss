@@ -3,35 +3,185 @@
   align-items: center;
   justify-content: space-between;
   padding: .9rem 1.4rem;
-  background: rgba(10,10,13,.75);
+  background: rgba(10, 10, 13, .75);
   backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--line);
   padding-top: calc(.9rem + env(safe-area-inset-top, 0px));
   position: sticky;
   top: 0;
-  z-index: 5;
+  z-index: 20;
 }
 
 .id {
   display: flex;
   align-items: center;
-  gap: .7rem;
+  gap: .85rem;
 
   .mark {
     font-weight: 700;
     font-size: 1.15rem;
-    em { font-style: normal; color: var(--blue); }
+    letter-spacing: -0.01em;
+    em {
+      font-style: normal;
+      color: var(--blue);
+    }
   }
 }
 
 .chip {
-  font-size: .72rem;
-  padding: .28rem .65rem;
-  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  font-size: .75rem;
+  padding: .32rem .75rem;
+  border-radius: 999px;
   background: var(--panel2);
   border: 1px solid var(--line2);
   color: var(--cyan);
   font-weight: 500;
+}
+
+.switcher {
+  position: relative;
+  display: inline-flex;
+}
+
+.chipBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  font-family: inherit;
+  font-size: .78rem;
+  font-weight: 500;
+  padding: .34rem .75rem .34rem .65rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--line2);
+  color: var(--ink, #f1f5f9);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  outline: none;
+
+  &:hover {
+    background: var(--panel2);
+    border-color: rgba(56, 189, 248, 0.45);
+  }
+}
+
+.chipBtnActive {
+  background: var(--blue-tint, rgba(14, 165, 233, 0.12));
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--cyan, #38bdf8);
+  box-shadow: 0 0 8px var(--cyan, #38bdf8);
+  flex-shrink: 0;
+}
+
+.chipText {
+  line-height: 1;
+}
+
+.chevron {
+  color: var(--muted);
+  transition: transform 0.2s ease, color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+  color: var(--cyan);
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  min-width: 190px;
+  background: rgba(16, 17, 23, 0.96);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--line2);
+  border-radius: 12px;
+  padding: .35rem;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  z-index: 50;
+  animation: fadeDown 0.14s ease-out;
+}
+
+@keyframes fadeDown {
+  from {
+    opacity: 0;
+    transform: translateY(-5px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.menuHeader {
+  font-size: .65rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--dim);
+  font-weight: 600;
+  padding: .4rem .6rem .3rem;
+}
+
+.menuList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .6rem;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  font-size: .83rem;
+  font-weight: 500;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  padding: .5rem .65rem;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+
+  &:hover {
+    background: var(--panel2);
+    color: var(--ink, #ffffff);
+  }
+}
+
+.menuItemActive {
+  background: var(--blue-tint, rgba(14, 165, 233, 0.14));
+  color: var(--cyan);
+
+  &:hover {
+    background: var(--blue-tint, rgba(14, 165, 233, 0.2));
+    color: var(--cyan);
+  }
+}
+
+.itemLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.checkIcon {
+  color: var(--cyan);
+  flex-shrink: 0;
 }
 
 .right {

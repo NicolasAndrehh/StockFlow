@@ -30,6 +30,17 @@ namespace StockFlow.API.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateProduct([FromBody] Product product)
         {
+            // Validamos precios positivos y rentabilidad (Precio de compra < Precio de venta)
+            if (product.PurchasePrice <= 0 || product.SalePrice <= 0)
+            {
+                return BadRequest(new { message = "Error: Purchase price and sale price must be greater than zero." });
+            }
+
+            if (product.PurchasePrice >= product.SalePrice)
+            {
+                return BadRequest(new { message = "Error: Purchase price must be strictly less than the sale price to ensure a profit margin." });
+            }
+
             // Validamos que el código sea único
             var codeExists = await _context.Products.AnyAsync(p => p.Code == product.Code);
             if (codeExists)
@@ -65,6 +76,17 @@ namespace StockFlow.API.Controllers
                 return BadRequest(new { message = "Error: The URL ID does not match the request body ID." });
             }
 
+            // Validamos precios positivos y rentabilidad (Precio de compra < Precio de venta)
+            if (product.PurchasePrice <= 0 || product.SalePrice <= 0)
+            {
+                return BadRequest(new { message = "Error: Purchase price and sale price must be greater than zero." });
+            }
+
+            if (product.PurchasePrice >= product.SalePrice)
+            {
+                return BadRequest(new { message = "Error: Purchase price must be strictly less than the sale price to ensure a profit margin." });
+            }
+
             var existingProduct = await _context.Products.FindAsync(id);
             if (existingProduct == null)
             {
@@ -93,6 +115,7 @@ namespace StockFlow.API.Controllers
             existingProduct.Name = product.Name;
             existingProduct.ProductTypeId = product.ProductTypeId;
             existingProduct.SupplierId = product.SupplierId;
+            existingProduct.PurchasePrice = product.PurchasePrice;
             existingProduct.SalePrice = product.SalePrice;
 
             await _context.SaveChangesAsync();

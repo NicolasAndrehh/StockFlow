@@ -55,11 +55,31 @@ export default function ProductView() {
     });
   };
 
+  const hasInvalidMargin =
+    (form.purchasePrice > 0 || form.salePrice > 0) &&
+    form.purchasePrice >= form.salePrice;
+
   const handleSave = async () => {
+    if (!form.code.trim() || !form.name.trim()) {
+      showToast('Please enter both product code and name.');
+      return;
+    }
+
     if (form.productTypeId === 0 || form.supplierId === 0) {
       showToast('Please select a product type and a supplier.');
       return;
     }
+
+    if (form.purchasePrice <= 0 || form.salePrice <= 0) {
+      showToast('Purchase price and sale price must be greater than zero.');
+      return;
+    }
+
+    if (form.purchasePrice >= form.salePrice) {
+      showToast('Purchase price must be strictly less than the sale price to ensure a profit margin.');
+      return;
+    }
+
     try {
       if (editingId) {
         const res = await productsApi.update(editingId, form);
@@ -82,7 +102,7 @@ export default function ProductView() {
         left={
           <Card>
             <DataTable
-              columns={['Code', 'Name', 'Type', 'Supplier', 'Price']}
+              columns={['Code', 'Name', 'Type', 'Supplier', 'Cost', 'Sale Price']}
               rows={products}
               renderRow={(p) => (
                 <tr key={p.id}>
@@ -90,6 +110,7 @@ export default function ProductView() {
                   <td>{p.name}</td>
                   <td>{p.productType?.name ?? '—'}</td>
                   <td>{p.supplier?.name ?? '—'}</td>
+                  <td>${p.purchasePrice.toLocaleString('es-CO')}</td>
                   <td>${p.salePrice.toLocaleString('es-CO')}</td>
                   <td><Button variant="mini" onClick={() => handleEdit(p)}>Edit</Button></td>
                 </tr>
@@ -130,9 +151,14 @@ export default function ProductView() {
               value={form.salePrice}
               onChange={(value) => setForm({ ...form, salePrice: value })}
             />
+            {hasInvalidMargin && (
+              <p style={{ color: '#e53935', fontSize: '0.85rem', marginTop: '-4px', marginBottom: '10px' }}>
+                Sale price must be higher than purchase price to guarantee profitability.
+              </p>
+            )}
             <div style={{ display: 'flex', gap: '10px' }}>
               <Button onClick={handleSave}>{editingId ? 'Update product' : 'Save'}</Button>
-              {editingId && <Button variant="ghost"     onClick={resetForm}>Cancel</Button>}
+              {editingId && <Button variant="ghost" onClick={resetForm}>Cancel</Button>}
             </div>
           </Card>
         }

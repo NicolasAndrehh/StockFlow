@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import styles from './SidebarNav.module.scss';
+import styles from './SideBarNav.module.scss';
 
 interface NavItem {
   label: string;

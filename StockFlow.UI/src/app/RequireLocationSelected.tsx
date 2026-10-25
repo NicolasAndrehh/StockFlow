@@ -1,13 +1,7 @@
-import { Navigate, Outlet } from 'react-router-dom';
-import { useAuth } from '../components/features/Auth/AuthContext';
+import { Outlet } from 'react-router-dom';
 
 export function RequireLocationSelected() {
-  const { user, activeLocation } = useAuth();
-
-  // Solo el Administrator pasa por el selector; Cashier/Waiter ya traen sede fija
-  if (user?.role === 'Administrator' && !activeLocation) {
-    return <Navigate to="/select-location" replace />;
-  }
-
+  // Se elimina el bloqueo inicial: el Administrador entra directo al sistema
+  // y puede cambiar de sede libremente desde el control en el menú superior (TopBar).
   return <Outlet />;
 }

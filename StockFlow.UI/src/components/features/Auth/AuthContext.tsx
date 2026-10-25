@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { authApi } from './auth.api';
 import { setAuthToken } from '../../services/apiClient';
+import { locationsApi } from '../Locations/locations.api';
 
 export type Role = 'Administrator' | 'Cashier' | 'Waiter';
 
@@ -11,7 +12,7 @@ interface AuthUser {
   name: string;
 }
 
-interface ActiveLocation {
+export interface ActiveLocation {
   id: number;
   name: string;
 }
@@ -55,9 +56,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuthToken(res.token);
     setUser({ role: res.role, locationId: res.locationId, name: res.name });
 
-    // Cashier/Waiter ya tienen sede fija asignada — no pasan por el selector
     if (res.role !== 'Administrator' && res.locationId != null && res.locationName) {
+      // Cashier/Waiter ya tienen sede fija asignada
       setActiveLocation({ id: res.locationId, name: res.locationName });
+    } else if (res.role === 'Administrator') {
+      // Preselecciona automáticamente la primera sede disponible sin bloquear el ingreso
+      try {
+        const locs = await locationsApi.getAll();
+        if (locs.length > 0) {
+          setActiveLocation({ id: locs[0].id, name: locs[0].name });
+        }
+      } catch {
+        // Si falla o no hay sedes aún, entra igual y el selector del menú lo gestionará
+      }
     }
   };
 
