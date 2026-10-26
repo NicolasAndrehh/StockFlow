@@ -50,6 +50,7 @@ export function AppLayout() {
       items: [
         { label: 'Inventory', path: '/inventory' },
         { label: 'Tables', path: '/tables' },
+        { label: 'Orders', path: '/orders' },
       ],
     },
     {
@@ -68,7 +69,10 @@ export function AppLayout() {
   const waiterGroups = [
     {
       title: 'Operation',
-      items: [{ label: 'Tables', path: '/tables' }],
+      items: [
+        { label: 'Tables', path: '/tables' },
+        { label: 'Orders', path: '/orders' },
+      ],
     },
   ];
 

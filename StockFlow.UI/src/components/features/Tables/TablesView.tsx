@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card } from '../../common/Card/Card';
 import { Badge } from '../../common/Badge/Badge';
 import { Button } from '../../common/Button/Button';
@@ -11,6 +12,7 @@ import type { RestaurantTable } from './tables.api';
 export default function TablesView() {
   const { activeLocation, user } = useAuth();
   const { showToast } = useToast();
+  const navigate = useNavigate();
 
   const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [selectedTable, setSelectedTable] = useState<RestaurantTable | null>(null);
@@ -125,13 +127,18 @@ export default function TablesView() {
                 <p style={{ color: 'var(--dim)', fontSize: '.85rem', marginBottom: '1.2rem' }}>
                   Location: <strong>{activeLocation?.name}</strong>
                 </p>
-                <Button onClick={() => handleToggleStatus(selectedTable)}>
-                  {selectedTable.status === 'Available' ? 'Occupy table (Open)' : 'Release table (Available)'}
-                </Button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <Button onClick={() => navigate(`/orders?tableId=${selectedTable.id}`)}>
+                    {selectedTable.status === 'Occupied' ? 'View / Add to Order' : 'Take Order'}
+                  </Button>
+                  <Button variant="ghost" onClick={() => handleToggleStatus(selectedTable)}>
+                    {selectedTable.status === 'Available' ? 'Mark Occupied' : 'Release Table'}
+                  </Button>
+                </div>
               </div>
             ) : (
               <p style={{ color: 'var(--dim)', fontSize: '.88rem' }}>
-                Select a table from the grid to view its status or assign it for service.
+                Select a table from the grid to take an order or manage its status.
               </p>
             )}
           </Card>

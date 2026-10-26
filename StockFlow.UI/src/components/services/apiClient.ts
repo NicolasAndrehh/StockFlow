@@ -1,4 +1,4 @@
-const BASE_URL = 'http://localhost:5082/api';
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5082/api';
 
 let authToken: string | null = null;
 
@@ -22,12 +22,12 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     try {
       data = await response.json();
     } catch {
-      // sin JSON en la respuesta
+      // No JSON content in response
     }
   }
 
   if (!response.ok) {
-    const errorMessage = (data && data.message) ? data.message : `Error en ${path}`;
+    const errorMessage = data && data.message ? data.message : `Request failed on ${path}`;
     throw new Error(errorMessage);
   }
 

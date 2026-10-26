@@ -16,6 +16,7 @@ import ProductView from '../components/features/Products/ProductView';
 import UserView from '../components/features/Users/UserView';
 import InventoryView from '../components/features/Inventory/InventoryView';
 import TablesView from '../components/features/Tables/TablesView';
+import OrdersView from '../components/features/Orders/OrdersView';
 
 export function AppRouter() {
   return (
@@ -47,6 +48,7 @@ export function AppRouter() {
 
                   <Route element={<ProtectedRoute allowedRoles={['Administrator', 'Waiter']} />}>
                     <Route path="/tables" element={<TablesView />} />
+                    <Route path="/orders" element={<OrdersView />} />
                   </Route>
                 </Route>
               </Route>
