@@ -4,10 +4,10 @@ namespace StockFlow.API.Models
     {
         public int Id { get; set; }
         public int Number { get; set; }
-        public string Status { get; set; }
+        public string Status { get; set; } = "Available";
         
         // Foreign key Location (Sede)
         public int LocationId { get; set; }
-        public Location Location { get; set; }
+        public Location? Location { get; set; }
     }
 }

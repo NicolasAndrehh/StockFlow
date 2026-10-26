@@ -24,7 +24,6 @@ export function AppLayout() {
             if (!currentValid) {
               selectLocation({ id: locs[0].id, name: locs[0].name });
             } else {
-              // Sincroniza el nombre por si fue editado en /locations
               const updated = locs.find((l) => l.id === activeLocation.id);
               if (updated && updated.name !== activeLocation.name) {
                 selectLocation({ id: updated.id, name: updated.name });
@@ -47,14 +46,40 @@ export function AppLayout() {
       ],
     },
     {
+      title: 'Operation',
+      items: [
+        { label: 'Inventory', path: '/inventory' },
+        { label: 'Tables', path: '/tables' },
+      ],
+    },
+    {
       title: 'Administration',
       items: [{ label: 'Users', path: '/users' }],
     },
   ];
 
-  const operationGroups: typeof adminGroups = [];
+  const cashierGroups = [
+    {
+      title: 'Operation',
+      items: [{ label: 'Inventory', path: '/inventory' }],
+    },
+  ];
 
-  const groups = user?.role === 'Administrator' ? adminGroups : operationGroups;
+  const waiterGroups = [
+    {
+      title: 'Operation',
+      items: [{ label: 'Tables', path: '/tables' }],
+    },
+  ];
+
+  const groups =
+    user?.role === 'Administrator'
+      ? adminGroups
+      : user?.role === 'Cashier'
+      ? cashierGroups
+      : user?.role === 'Waiter'
+      ? waiterGroups
+      : [];
 
   return (
     <div className={styles.app}>

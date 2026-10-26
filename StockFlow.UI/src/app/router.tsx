@@ -14,6 +14,8 @@ import ProductTypesView from '../components/features/ProductTypes/ProductTypesVi
 import SupplierView from '../components/features/Suppliers/SuppliersView';
 import ProductView from '../components/features/Products/ProductView';
 import UserView from '../components/features/Users/UserView';
+import InventoryView from '../components/features/Inventory/InventoryView';
+import TablesView from '../components/features/Tables/TablesView';
 
 export function AppRouter() {
   return (
@@ -37,6 +39,14 @@ export function AppRouter() {
                     <Route path="/suppliers" element={<SupplierView />} />
                     <Route path="/products" element={<ProductView />} />
                     <Route path="/users" element={<UserView />} />
+                  </Route>
+
+                  <Route element={<ProtectedRoute allowedRoles={['Administrator', 'Cashier']} />}>
+                    <Route path="/inventory" element={<InventoryView />} />
+                  </Route>
+
+                  <Route element={<ProtectedRoute allowedRoles={['Administrator', 'Waiter']} />}>
+                    <Route path="/tables" element={<TablesView />} />
                   </Route>
                 </Route>
               </Route>

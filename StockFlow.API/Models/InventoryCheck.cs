@@ -7,10 +7,10 @@ namespace StockFlow.API.Models
 
         // Foreign key Location (Sede)
         public int LocationId { get; set; }
-        public Location Location { get; set; }
+        public Location? Location { get; set; }
 
         // Foreign key User (Usuario que hace el conteo)
         public int UserId { get; set; }
-        public User User { get; set; }
+        public User? User { get; set; }
     }
 }
