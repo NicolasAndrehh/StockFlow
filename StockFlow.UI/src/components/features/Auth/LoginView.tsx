@@ -6,7 +6,7 @@ import { Button } from '../../common/Button/Button';
 import { useAuth } from './AuthContext';
 
 export default function LoginView() {
-  const { login, user } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');

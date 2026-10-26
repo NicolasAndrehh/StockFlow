@@ -76,14 +76,15 @@ await DbSeeder.SeedAsync(app.Services);
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.UseHttpsRedirection();
 }
-
-app.UseHttpsRedirection();
 
 app.UseCors("AllowReact");
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.MapGet("/", () => Results.Ok(new { status = "StockFlow API is running", timestamp = DateTime.UtcNow }));
 
 app.MapControllers();
 
