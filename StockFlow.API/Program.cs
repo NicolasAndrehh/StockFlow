@@ -46,6 +46,8 @@ builder.Services.AddCors(options =>
         policy.SetIsOriginAllowed(origin =>
                 origin.StartsWith("http://localhost:") ||
                 origin.EndsWith(".vercel.app") ||
+                origin.EndsWith(".tmp.now") ||
+                origin.EndsWith(".now.sh") ||
                 origin.EndsWith(".onrender.com") ||
                 origin.EndsWith(".railway.app") ||
                 origin.EndsWith(".netlify.app") ||
