@@ -1,6 +1,13 @@
 import { api } from '../../services/apiClient';
 import type { OrderDetailItem } from '../Orders/orders.api';
 
+export interface CashDenominationItem {
+  denomination: number;
+  count: number;
+  kind: string;
+  subtotal: number;
+}
+
 export interface LocationOrderSummary {
   id: number;
   status: 'Open' | 'Closed';
@@ -27,6 +34,7 @@ export interface InvoiceReceipt {
   paymentMethod: string;
   totalPaid: number;
   items: OrderDetailItem[];
+  cashBreakdown?: CashDenominationItem[];
 }
 
 export interface CheckoutOrderResponse {

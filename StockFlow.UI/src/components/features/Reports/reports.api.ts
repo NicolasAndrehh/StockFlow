@@ -22,6 +22,42 @@ export interface LocationKpiSummary {
   totalUnitsSold: number;
 }
 
+export interface KnapsackItemResult {
+  productCode: string;
+  productName: string;
+  locationName: string;
+  batchQuantity: number;
+  investedCost: number;
+  expectedProfit: number;
+}
+
+export interface KnapsackAnalysis {
+  capacityCostBudget: number;
+  actualCostInvested: number;
+  actualProfitObtained: number;
+  optimalCostUsed: number;
+  optimalProfitAchievable: number;
+  optimalSelectedItems: KnapsackItemResult[];
+}
+
+export interface BranchAllocationRow {
+  locationName: string;
+  recommendedProduct: string;
+  recommendedUnits: number;
+  allocatedCapital: number;
+  projectedNetProfit: number;
+  upperBoundMarginRatio: number;
+}
+
+export interface BranchAndBoundSummary {
+  totalCapitalBudget: number;
+  totalAllocatedCapital: number;
+  maxProjectedNetProfit: number;
+  nodesExplored: number;
+  branchesPruned: number;
+  allocations: BranchAllocationRow[];
+}
+
 export interface SalesReportResponse {
   scope: string;
   grandTotalSales: number;
@@ -29,6 +65,8 @@ export interface SalesReportResponse {
   grandTotalUnits: number;
   locationSummaries: LocationKpiSummary[];
   rows: SalesReportRow[];
+  knapsackAnalysis?: KnapsackAnalysis;
+  branchAndBoundSummary?: BranchAndBoundSummary;
 }
 
 export interface ConcurrencyCheckResult {

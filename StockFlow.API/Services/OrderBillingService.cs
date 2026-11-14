@@ -62,6 +62,7 @@ namespace StockFlow.API.Services
         public string PaymentMethod { get; set; } = string.Empty;
         public decimal TotalPaid { get; set; }
         public List<InvoiceLineDto> Items { get; set; } = new();
+        public List<CashDenominationDto> CashBreakdown { get; set; } = new();
     }
 
     public interface IOrderBillingService
@@ -444,6 +445,11 @@ namespace StockFlow.API.Services
 
                 var cashier = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == cashierUserId);
 
+                // Si el pago fue en Efectivo, ejecuto el Algoritmo Voraz para desglosar la combinación mínima de billetes/monedas COP en la factura física (HU-13 / HU-14)
+                var cashBreakdown = cleanMethod == "Cash"
+                    ? StockFlowAlgorithms.ComputeGreedyCashBreakdown(payment.AmountPaid)
+                    : new List<CashDenominationDto>();
+
                 var dto = new CheckoutResultDto
                 {
                     OrderId = order.Id,
@@ -464,7 +470,8 @@ namespace StockFlow.API.Services
                         Quantity = d.Quantity,
                         UnitPrice = d.UnitPrice,
                         Subtotal = d.Quantity * d.UnitPrice
-                    }).ToList()
+                    }).ToList(),
+                    CashBreakdown = cashBreakdown
                 };
 
                 return (true, $"Order #{order.Id} closed and physical invoice {invoice.InvoiceNumber} generated.", dto);
@@ -513,6 +520,11 @@ namespace StockFlow.API.Services
                 .Where(d => d.OrderId == order.Id)
                 .ToListAsync();
 
+            // Si la factura se pagó en Efectivo, calculo el desglose óptimo de billetes/monedas COP con mi Algoritmo Voraz (HU-13 / HU-14)
+            var cashBreakdown = payment.PaymentMethod == "Cash"
+                ? StockFlowAlgorithms.ComputeGreedyCashBreakdown(payment.AmountPaid)
+                : new List<CashDenominationDto>();
+
             return new CheckoutResultDto
             {
                 OrderId = order.Id,
@@ -533,7 +545,8 @@ namespace StockFlow.API.Services
                     Quantity = d.Quantity,
                     UnitPrice = d.UnitPrice,
                     Subtotal = d.Quantity * d.UnitPrice
-                }).ToList()
+                }).ToList(),
+                CashBreakdown = cashBreakdown
             };
         }
     }

@@ -1,3 +1,4 @@
+#nullable enable
 using Microsoft.EntityFrameworkCore;
 using StockFlow.API.Data;
 
@@ -35,6 +36,8 @@ namespace StockFlow.API.Services
         public int GrandTotalUnits { get; set; }
         public List<LocationSummaryKpiDto> LocationSummaries { get; set; } = new();
         public List<TransactionalReportRowDto> Rows { get; set; } = new();
+        public KnapsackAnalysisDto KnapsackAnalysis { get; set; } = new();
+        public BranchAndBoundSummaryDto BranchAndBoundSummary { get; set; } = new();
     }
 
     public interface IReportService
@@ -55,7 +58,7 @@ namespace StockFlow.API.Services
             _context = context;
         }
 
-        // Genero el reporte transaccional por sede (HU-16) o consolidado de las 3 sedes (HU-07) con las columnas de HU-17
+        // Genero el reporte transaccional por sede (HU-16) o consolidado de las 3 sedes (HU-07) con QuickSort, Mochila 0/1 y Ramificación y Poda
         public async Task<SalesReportResponseDto> GetTransactionalReportAsync(
             DateTime? startDate,
             DateTime? endDate,
@@ -69,19 +72,20 @@ namespace StockFlow.API.Services
 
             var locations = await _context.Locations
                 .AsNoTracking()
-                .OrderBy(l => l.Id)
                 .ToListAsync();
+
+            StockFlowAlgorithms.QuickSortInPlace(locations, (a, b) => a.Id.CompareTo(b.Id));
 
             var paymentsQuery = _context.Payments
                 .AsNoTracking()
                 .Include(p => p.Order)
-                    .ThenInclude(o => o.Table)
+                    .ThenInclude(o => o!.Table)
                         .ThenInclude(t => t!.Location)
-                .Where(p => p.Order.Status == "Closed" && p.PaymentDate >= startUtc && p.PaymentDate <= endUtc);
+                .Where(p => p.Order != null && p.Order.Status == "Closed" && p.PaymentDate >= startUtc && p.PaymentDate <= endUtc);
 
             if (locationId.HasValue && locationId.Value > 0)
             {
-                paymentsQuery = paymentsQuery.Where(p => p.Order.Table != null && p.Order.Table.LocationId == locationId.Value);
+                paymentsQuery = paymentsQuery.Where(p => p.Order != null && p.Order.Table != null && p.Order.Table.LocationId == locationId.Value);
             }
 
             var closedPayments = await paymentsQuery.ToListAsync();
@@ -145,10 +149,15 @@ namespace StockFlow.API.Services
                     LocationId = g.Key.LocationId,
                     LocationName = g.Key.LocationName
                 })
-                .OrderByDescending(r => r.RawDate)
-                .ThenBy(r => r.LocationName)
-                .ThenBy(r => r.ProductCode)
                 .ToList();
+
+            // 1. Ejecuto mi QuickSort propio in-place (mediana de tres) para ordenar por Ganancia (Profit) descendente y Fecha descendente (HU-16, HU-17, HU-07, HU-21)
+            StockFlowAlgorithms.QuickSortInPlace(groupedRows, (a, b) =>
+            {
+                int profitCompare = b.Profit.CompareTo(a.Profit);
+                if (profitCompare != 0) return profitCompare;
+                return b.RawDate.CompareTo(a.RawDate);
+            });
 
             var targetLocations = locationId.HasValue && locationId.Value > 0 && !isAdmin
                 ? locations.Where(l => l.Id == locationId.Value).ToList()
@@ -167,6 +176,12 @@ namespace StockFlow.API.Services
                 };
             }).ToList();
 
+            // 3. Ejecuto Programación Dinámica (Mochila 0/1 O(n * W)) para la pestaña Optimal_Profit_Analysis del Excel (HU-16 y HU-07)
+            var knapsackAnalysis = StockFlowAlgorithms.SolveZeroOneKnapsack(groupedRows);
+
+            // 5. Ejecuto Ramificación y Poda (Branch and Bound) para la pestaña de resumen gerencial de las 3 sedes en el Excel consolidado (HU-07)
+            var branchAndBoundSummary = StockFlowAlgorithms.SolveBranchAndBoundAllocation(locationSummaries, groupedRows);
+
             return new SalesReportResponseDto
             {
                 Scope = isAdmin && (!locationId.HasValue || locationId.Value == 0)
@@ -176,7 +191,9 @@ namespace StockFlow.API.Services
                 GrandTotalProfit = groupedRows.Sum(r => r.Profit),
                 GrandTotalUnits = groupedRows.Sum(r => r.QuantitySold),
                 LocationSummaries = locationSummaries,
-                Rows = groupedRows
+                Rows = groupedRows,
+                KnapsackAnalysis = knapsackAnalysis,
+                BranchAndBoundSummary = branchAndBoundSummary
             };
         }
     }

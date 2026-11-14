@@ -1,9 +1,11 @@
+#nullable enable
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using StockFlow.API.Data;
 using StockFlow.API.Models;
+using StockFlow.API.Services;
 
 namespace StockFlow.API.Controllers
 {
@@ -26,6 +28,19 @@ namespace StockFlow.API.Controllers
         public List<InventoryCheckItemRequest> Items { get; set; } = new();
     }
 
+    public class InventoryLocationRowDto
+    {
+        public int Id { get; set; }
+        public int LocationId { get; set; }
+        public int ProductId { get; set; }
+        public string ProductCode { get; set; } = string.Empty;
+        public string ProductName { get; set; } = string.Empty;
+        public string ProductTypeName { get; set; } = string.Empty;
+        public string SupplierName { get; set; } = string.Empty;
+        public decimal SalePrice { get; set; }
+        public int AvailableQuantity { get; set; }
+    }
+
     [Route("api/inventory")]
     [ApiController]
     [Authorize]
@@ -38,6 +53,7 @@ namespace StockFlow.API.Controllers
             _context = context;
         }
 
+        // Consulto el inventario de la sede y lo ordeno en memoria con mi QuickSort in-place O(n log n) en lugar de delegarlo a SQL (HU-09 y HU-21)
         [HttpGet]
         public async Task<IActionResult> GetByLocation([FromQuery] int locationId)
         {
@@ -52,19 +68,20 @@ namespace StockFlow.API.Controllers
             }
 
             var products = await _context.Products
+                .AsNoTracking()
                 .Include(p => p.ProductType)
                 .Include(p => p.Supplier)
-                .OrderBy(p => p.Name)
                 .ToListAsync();
 
             var locationStocks = await _context.LocationInventories
+                .AsNoTracking()
                 .Where(li => li.LocationId == locationId)
                 .ToListAsync();
 
             var result = products.Select(p =>
             {
                 var stockRecord = locationStocks.FirstOrDefault(li => li.ProductId == p.Id);
-                return new
+                return new InventoryLocationRowDto
                 {
                     Id = stockRecord?.Id ?? 0,
                     LocationId = locationId,
@@ -76,12 +93,21 @@ namespace StockFlow.API.Controllers
                     SalePrice = p.SalePrice,
                     AvailableQuantity = stockRecord?.AvailableQuantity ?? 0
                 };
+            }).ToList();
+
+            // Ordeno in-place con QuickSort propio (pivote mediana de tres) por disponibilidad descendente y nombre ascendente
+            StockFlowAlgorithms.QuickSortInPlace(result, (a, b) =>
+            {
+                int stockCompare = b.AvailableQuantity.CompareTo(a.AvailableQuantity);
+                return stockCompare != 0
+                    ? stockCompare
+                    : string.Compare(a.ProductName, b.ProductName, StringComparison.OrdinalIgnoreCase);
             });
 
             return Ok(result);
         }
 
-        // Registro de chequeo completo por sede (HU-15)
+        // Registro de chequeo completo por sede (HU-15) con reconciliación por Backtracking (Subset Sum) en logs de auditoría
         [HttpPost("full-check")]
         [Authorize(Roles = "Administrator,Cashier")]
         public async Task<IActionResult> RegisterFullCheck([FromBody] FullInventoryCheckRequest request)
@@ -140,10 +166,71 @@ namespace StockFlow.API.Controllers
                 .Where(li => li.LocationId == request.LocationId)
                 .ToDictionaryAsync(li => li.ProductId);
 
-            // Actualizo el stock disponible de la sede con el conteo físico y guardo el detalle del chequeo
+            // Consulto los detalles de pedidos cerrados del día en la sede para explicar descuadres mediante Backtracking (Subset Sum)
+            var todayStart = DateTime.UtcNow.Date.AddDays(-1);
+            var closedOrderDetails = await _context.OrderDetails
+                .AsNoTracking()
+                .Include(d => d.Order)
+                    .ThenInclude(o => o!.Table)
+                .Where(d =>
+                    d.Order != null &&
+                    d.Order.Status == "Closed" &&
+                    d.Order.OpeningDate >= todayStart &&
+                    d.Order.Table != null &&
+                    d.Order.Table.LocationId == request.LocationId)
+                .Select(d => new
+                {
+                    d.OrderId,
+                    d.ProductId,
+                    d.Quantity,
+                    Subtotal = d.Quantity * d.UnitPrice
+                })
+                .ToListAsync();
+
+            var allClosedTuples = closedOrderDetails
+                .Select(d => (d.OrderId, d.Quantity, d.Subtotal))
+                .ToList();
+
+            // Actualizo el stock disponible de la sede con el conteo físico y ejecuto Backtracking si detecto merma o sobrante
             foreach (var item in request.Items)
             {
-                if (existingStocks.TryGetValue(item.ProductId, out var stockRecord))
+                int theoreticalStock = existingStocks.TryGetValue(item.ProductId, out var stockRecord)
+                    ? stockRecord.AvailableQuantity
+                    : 0;
+
+                int difference = Math.Abs(theoreticalStock - item.CountedQuantity);
+
+                if (difference > 0)
+                {
+                    var productCandidates = closedOrderDetails
+                        .Where(d => d.ProductId == item.ProductId)
+                        .Select(d => (d.OrderId, d.Quantity, d.Subtotal))
+                        .ToList();
+
+                    if (productCandidates.Count == 0)
+                    {
+                        productCandidates = allClosedTuples;
+                    }
+
+                    var matchedTraces = StockFlowAlgorithms.FindDiscrepancyTransactionsByBacktracking(
+                        difference,
+                        productCandidates);
+
+                    string varianceType = item.CountedQuantity < theoreticalStock ? "SHORTAGE" : "SURPLUS";
+                    string traceSummary = matchedTraces.Count > 0
+                        ? string.Join(" | ", matchedTraces)
+                        : "NO_EXACT_SUBSET_MATCH";
+
+                    _context.AuditRecords.Add(new AuditRecord
+                    {
+                        Action = $"BACKTRACKING_VARIANCE:{varianceType}:Prod={item.ProductId}:Diff={difference}:Matches=[{traceSummary}]",
+                        Entity = "InventoryCheck",
+                        Date = DateTime.UtcNow,
+                        UserId = userId.Value
+                    });
+                }
+
+                if (stockRecord != null)
                 {
                     stockRecord.AvailableQuantity = item.CountedQuantity;
                 }

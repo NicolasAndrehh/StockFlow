@@ -53,7 +53,7 @@ export default function ReportsView() {
     loadReport();
   }, [startDate, endDate, locationFilter, activeLocation?.id, isAdminGeneralView]);
 
-  // Genero y descargo el archivo Excel (.xls en formato SpreadsheetML) con las 8 columnas obligatorias de HU-17
+  // Genero y descargo el archivo Excel (.xls SpreadsheetML) incluyendo las pestañas de Mochila 0/1 (Optimal_Profit_Analysis) y Ramificación y Poda (Executive_Branch_Allocation)
   const handleExportToExcel = () => {
     if (!report || report.rows.length === 0) {
       showToast('There are no sales records to export for the selected range.');
@@ -80,6 +80,104 @@ export default function ReportsView() {
           <Cell><Data ss:Type="String">${escapeXml(r.locationName)}</Data></Cell>
         </Row>`)
       .join('');
+
+    // Segunda pestaña: Programación Dinámica (Mochila 0/1) Optimal_Profit_Analysis (HU-16 y HU-07)
+    const knapsack = report.knapsackAnalysis;
+    const knapsackRowsXml = (knapsack?.optimalSelectedItems ?? [])
+      .map((item) => `
+        <Row>
+          <Cell><Data ss:Type="String">${escapeXml(item.productCode)}</Data></Cell>
+          <Cell><Data ss:Type="String">${escapeXml(item.productName)}</Data></Cell>
+          <Cell><Data ss:Type="String">${escapeXml(item.locationName)}</Data></Cell>
+          <Cell><Data ss:Type="Number">${item.batchQuantity}</Data></Cell>
+          <Cell><Data ss:Type="Number">${item.investedCost}</Data></Cell>
+          <Cell><Data ss:Type="Number">${item.expectedProfit}</Data></Cell>
+        </Row>`)
+      .join('');
+
+    const knapsackSheetXml = `
+  <Worksheet ss:Name="Optimal_Profit_Analysis">
+    <Table>
+      <Row>
+        <Cell><Data ss:Type="String">0/1 Knapsack Dynamic Programming — Optimal Product Mix vs Actual Sales</Data></Cell>
+      </Row>
+      <Row>
+        <Cell><Data ss:Type="String">Metric</Data></Cell>
+        <Cell><Data ss:Type="String">Invested Cost (COP)</Data></Cell>
+        <Cell><Data ss:Type="String">Net Profit (COP)</Data></Cell>
+      </Row>
+      <Row>
+        <Cell><Data ss:Type="String">Actual Period Sales</Data></Cell>
+        <Cell><Data ss:Type="Number">${knapsack?.actualCostInvested ?? 0}</Data></Cell>
+        <Cell><Data ss:Type="Number">${knapsack?.actualProfitObtained ?? 0}</Data></Cell>
+      </Row>
+      <Row>
+        <Cell><Data ss:Type="String">0/1 Knapsack Optimal Mix (Capacity W = ${knapsack?.capacityCostBudget ?? 0})</Data></Cell>
+        <Cell><Data ss:Type="Number">${knapsack?.optimalCostUsed ?? 0}</Data></Cell>
+        <Cell><Data ss:Type="Number">${knapsack?.optimalProfitAchievable ?? 0}</Data></Cell>
+      </Row>
+      <Row></Row>
+      <Row>
+        <Cell><Data ss:Type="String">Code</Data></Cell>
+        <Cell><Data ss:Type="String">Optimal Product Batch</Data></Cell>
+        <Cell><Data ss:Type="String">Location</Data></Cell>
+        <Cell><Data ss:Type="String">Units</Data></Cell>
+        <Cell><Data ss:Type="String">Purchase Cost (w_i)</Data></Cell>
+        <Cell><Data ss:Type="String">Net Profit (v_i)</Data></Cell>
+      </Row>
+      ${knapsackRowsXml}
+    </Table>
+  </Worksheet>`;
+
+    // Tercera pestaña: Ramificación y Poda (Branch and Bound) para el Reporte Consolidado de las 3 sedes del Administrador (HU-07)
+    const bb = report.branchAndBoundSummary;
+    const isConsolidatedExport = isAdminGeneralView && locationFilter === 'all';
+    const bbRowsXml = (bb?.allocations ?? [])
+      .map((alloc) => `
+        <Row>
+          <Cell><Data ss:Type="String">${escapeXml(alloc.locationName)}</Data></Cell>
+          <Cell><Data ss:Type="String">${escapeXml(alloc.recommendedProduct)}</Data></Cell>
+          <Cell><Data ss:Type="Number">${alloc.recommendedUnits}</Data></Cell>
+          <Cell><Data ss:Type="Number">${alloc.allocatedCapital}</Data></Cell>
+          <Cell><Data ss:Type="Number">${alloc.projectedNetProfit}</Data></Cell>
+          <Cell><Data ss:Type="Number">${alloc.upperBoundMarginRatio}</Data></Cell>
+        </Row>`)
+      .join('');
+
+    const branchAndBoundSheetXml = isConsolidatedExport
+      ? `
+  <Worksheet ss:Name="Executive_Branch_Allocation">
+    <Table>
+      <Row>
+        <Cell><Data ss:Type="String">Branch and Bound — Multi-Location Optimal Capital &amp; Unit Allocation (Next Cycle)</Data></Cell>
+      </Row>
+      <Row>
+        <Cell><Data ss:Type="String">Next Cycle Capital Budget</Data></Cell>
+        <Cell><Data ss:Type="Number">${bb?.totalCapitalBudget ?? 0}</Data></Cell>
+        <Cell><Data ss:Type="String">Allocated Capital</Data></Cell>
+        <Cell><Data ss:Type="Number">${bb?.totalAllocatedCapital ?? 0}</Data></Cell>
+        <Cell><Data ss:Type="String">Max Projected Net Profit</Data></Cell>
+        <Cell><Data ss:Type="Number">${bb?.maxProjectedNetProfit ?? 0}</Data></Cell>
+      </Row>
+      <Row>
+        <Cell><Data ss:Type="String">Tree Nodes Explored</Data></Cell>
+        <Cell><Data ss:Type="Number">${bb?.nodesExplored ?? 0}</Data></Cell>
+        <Cell><Data ss:Type="String">Suboptimal Branches Pruned</Data></Cell>
+        <Cell><Data ss:Type="Number">${bb?.branchesPruned ?? 0}</Data></Cell>
+      </Row>
+      <Row></Row>
+      <Row>
+        <Cell><Data ss:Type="String">Location</Data></Cell>
+        <Cell><Data ss:Type="String">Recommended Product Allocation</Data></Cell>
+        <Cell><Data ss:Type="String">Assigned Units</Data></Cell>
+        <Cell><Data ss:Type="String">Assigned Capital (COP)</Data></Cell>
+        <Cell><Data ss:Type="String">Projected Net Profit (COP)</Data></Cell>
+        <Cell><Data ss:Type="String">Margin Ratio (%)</Data></Cell>
+      </Row>
+      ${bbRowsXml}
+    </Table>
+  </Worksheet>`
+      : '';
 
     const workbookXml = `<?xml version="1.0" encoding="UTF-8"?>
 <?mso-application progid="Excel.Sheet"?>
@@ -110,6 +208,8 @@ export default function ReportsView() {
       </Row>
     </Table>
   </Worksheet>
+  ${knapsackSheetXml}
+  ${branchAndBoundSheetXml}
 </Workbook>`;
 
     const blob = new Blob([workbookXml], { type: 'application/vnd.ms-excel;charset=utf-8;' });

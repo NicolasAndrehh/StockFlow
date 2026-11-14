@@ -249,6 +249,36 @@ export default function BillingView() {
                 <span>Payment method</span>
                 <strong>{activeInvoice.paymentMethod}</strong>
               </div>
+
+              {/* Pie del comprobante físico con el desglose óptimo de denominaciones COP calculado por el Algoritmo Voraz (HU-13 / HU-14) */}
+              {activeInvoice.paymentMethod === 'Cash' &&
+                activeInvoice.cashBreakdown &&
+                activeInvoice.cashBreakdown.length > 0 && (
+                  <div
+                    style={{
+                      marginTop: '.6rem',
+                      paddingTop: '.5rem',
+                      borderTop: '1px dashed var(--line2)',
+                      fontSize: '.75rem',
+                      color: 'var(--dim)',
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, color: 'var(--muted)', marginBottom: '.25rem' }}>
+                      Optimal Cash Breakdown (COP Denominations):
+                    </div>
+                    {activeInvoice.cashBreakdown.map((b) => (
+                      <div
+                        key={b.denomination}
+                        style={{ display: 'flex', justifyContent: 'space-between', padding: '.08rem 0' }}
+                      >
+                        <span>
+                          {b.count} × {formatMoney(b.denomination)} ({b.kind})
+                        </span>
+                        <span>{formatMoney(b.subtotal)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
             </Card>
           }
           right={
