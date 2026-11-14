@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using StockFlow.API.Data;
 using StockFlow.API.Models;
+using StockFlow.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 var envConn = Environment.GetEnvironmentVariable("MYSQL_CONNECTION_STRING");
@@ -67,6 +68,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
+
+// Inyecto mi capa de servicios de negocio para facturación y reportes (Sprints 7, 8 y 9)
+builder.Services.AddScoped<IOrderBillingService, OrderBillingService>();
+builder.Services.AddScoped<IReportService, ReportService>();
 
 var app = builder.Build();
 

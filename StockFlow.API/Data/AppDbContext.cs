@@ -11,17 +11,35 @@ namespace StockFlow.API.Data
 
         public DbSet<Location> Locations { get; set; }
         public DbSet<User> Users { get; set; }
-        public DbSet<ProductType> ProductTypes { get; set; }
+        public DbSet<AuditRecord> AuditRecords { get; set; }
         public DbSet<Supplier> Suppliers { get; set; }
+        public DbSet<ProductType> ProductTypes { get; set; }
         public DbSet<Product> Products { get; set; }
+        public DbSet<Order> Orders { get; set; }
+        public DbSet<Payment> Payments { get; set; }
+        public DbSet<Table> Tables { get; set; }
         public DbSet<LocationInventory> LocationInventories { get; set; }
+        public DbSet<Invoice> Invoices { get; set; }
+        public DbSet<OrderDetail> OrderDetails { get; set; }
         public DbSet<InventoryCheck> InventoryChecks { get; set; }
         public DbSet<InventoryCheckDetail> InventoryCheckDetails { get; set; }
-        public DbSet<Table> Tables { get; set; }
-        public DbSet<Order> Orders { get; set; }
-        public DbSet<OrderDetail> OrderDetails { get; set; }
-        public DbSet<Payment> Payments { get; set; }
-        public DbSet<Invoice> Invoices { get; set; }
-        public DbSet<AuditRecord> AuditRecords { get; set; }
+
+        // Configuro índices compuestos en las tablas transaccionales para garantizar tiempos de respuesta <= 2s bajo concurrencia (HU-21)
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<LocationInventory>()
+                .HasIndex(li => new { li.LocationId, li.ProductId });
+
+            modelBuilder.Entity<Order>()
+                .HasIndex(o => new { o.TableId, o.Status });
+
+            modelBuilder.Entity<Payment>()
+                .HasIndex(p => new { p.PaymentDate, p.OrderId });
+
+            modelBuilder.Entity<Table>()
+                .HasIndex(t => new { t.LocationId, t.Number });
+        }
     }
 }

@@ -1,7 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../components/features/Auth/AuthContext';
 
-const OPERATIONAL_PATHS = ['/inventory', '/tables', '/orders'];
+const OPERATIONAL_PATHS = ['/inventory', '/billing', '/tables', '/orders'];
 
 export function RequireLocationSelected() {
   const { user, activeLocation } = useAuth();

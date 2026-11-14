@@ -44,7 +44,7 @@ export function AppLayout() {
     }
   };
 
-  // Vista general del Administrador: solo catálogos y administración general
+  // Vista general del Administrador: catálogos, usuarios y reporte consolidado (HU-07)
   const adminGroups = [
     {
       title: 'Catalog',
@@ -56,8 +56,11 @@ export function AppLayout() {
       ],
     },
     {
-      title: 'Administration',
-      items: [{ label: 'Users', path: '/users' }],
+      title: 'Administration & Reports',
+      items: [
+        { label: 'Users', path: '/users' },
+        { label: 'Consolidated Reports', path: '/reports' },
+      ],
     },
   ];
 
@@ -65,7 +68,11 @@ export function AppLayout() {
   const cashierGroups = [
     {
       title: 'Operation',
-      items: [{ label: 'Inventory', path: '/inventory' }],
+      items: [
+        { label: 'Inventory', path: '/inventory' },
+        { label: 'Order Checkout', path: '/billing' },
+        { label: 'Sales Reports', path: '/reports' },
+      ],
     },
   ];
 

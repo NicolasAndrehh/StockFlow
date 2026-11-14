@@ -260,6 +260,144 @@ namespace StockFlow.API.Data
                 }
             }
             await context.SaveChangesAsync();
+
+            // Si aún no hay órdenes en la base de datos, genero órdenes cerradas (con pago y factura) y órdenes abiertas de ejemplo por sede
+            if (!await context.Orders.AnyAsync())
+            {
+                var productsByCode = allProducts.ToDictionary(p => p.Code);
+                var users = await context.Users.ToListAsync();
+                var tables = await context.Tables.ToListAsync();
+
+                var waiterGranja = users.FirstOrDefault(u => u.Code == "WTR01") ?? users.First();
+                var cashierGranja = users.FirstOrDefault(u => u.Code == "CSH01") ?? users.First();
+                var waiterModelia = users.FirstOrDefault(u => u.Code == "WTR02") ?? users.First();
+                var cashierModelia = users.FirstOrDefault(u => u.Code == "CSH02") ?? users.First();
+                var waiterChapinero = users.FirstOrDefault(u => u.Code == "WTR03") ?? users.First();
+                var cashierChapinero = users.FirstOrDefault(u => u.Code == "CSH03") ?? users.First();
+
+                var tableGranja1 = tables.First(t => t.LocationId == granja.Id && t.Number == 1);
+                var tableGranja3 = tables.First(t => t.LocationId == granja.Id && t.Number == 3);
+                var tableModelia2 = tables.First(t => t.LocationId == modelia.Id && t.Number == 2);
+                var tableChapinero4 = tables.First(t => t.LocationId == chapinero.Id && t.Number == 4);
+
+                var closedSamples = new List<(Table Table, User Waiter, User Cashier, string Method, DateTime Date, List<(Product Product, int Qty)> Items)>
+                {
+                    (
+                        tableGranja1,
+                        waiterGranja,
+                        cashierGranja,
+                        "Cash",
+                        DateTime.UtcNow.AddHours(-6),
+                        new List<(Product, int)>
+                        {
+                            (productsByCode["BR-04"], 6),
+                            (productsByCode["AG-01"], 1)
+                        }
+                    ),
+                    (
+                        tableModelia2,
+                        waiterModelia,
+                        cashierModelia,
+                        "Credit Card",
+                        DateTime.UtcNow.AddHours(-4),
+                        new List<(Product, int)>
+                        {
+                            (productsByCode["WK-02"], 1),
+                            (productsByCode["MX-01"], 4)
+                        }
+                    ),
+                    (
+                        tableChapinero4,
+                        waiterChapinero,
+                        cashierChapinero,
+                        "Debit Card",
+                        DateTime.UtcNow.AddHours(-2),
+                        new List<(Product, int)>
+                        {
+                            (productsByCode["GM-01"], 1),
+                            (productsByCode["BR-02"], 5)
+                        }
+                    )
+                };
+
+                foreach (var sample in closedSamples)
+                {
+                    var closedOrder = new Order
+                    {
+                        Status = "Closed",
+                        OpeningDate = sample.Date,
+                        TableId = sample.Table.Id,
+                        UserId = sample.Waiter.Id
+                    };
+                    context.Orders.Add(closedOrder);
+                    await context.SaveChangesAsync();
+
+                    decimal orderTotal = 0m;
+                    foreach (var (prod, qty) in sample.Items)
+                    {
+                        context.OrderDetails.Add(new OrderDetail
+                        {
+                            OrderId = closedOrder.Id,
+                            ProductId = prod.Id,
+                            Quantity = qty,
+                            UnitPrice = prod.SalePrice
+                        });
+                        orderTotal += prod.SalePrice * qty;
+                    }
+                    await context.SaveChangesAsync();
+
+                    var payment = new Payment
+                    {
+                        OrderId = closedOrder.Id,
+                        UserId = sample.Cashier.Id,
+                        PaymentMethod = sample.Method,
+                        AmountPaid = orderTotal,
+                        PaymentDate = sample.Date.AddMinutes(35)
+                    };
+                    context.Payments.Add(payment);
+                    await context.SaveChangesAsync();
+
+                    context.Invoices.Add(new Invoice
+                    {
+                        PaymentId = payment.Id,
+                        InvoiceNumber = $"INV-{closedOrder.Id:D4}-{payment.Id:D4}",
+                        IssuedDate = sample.Date.AddMinutes(35)
+                    });
+
+                    await context.SaveChangesAsync();
+                }
+
+                // Dejo una orden abierta en la Mesa #3 de Granja para que se pueda probar el cierre e impresión de factura de inmediato
+                var openOrder = new Order
+                {
+                    Status = "Open",
+                    OpeningDate = DateTime.UtcNow.AddMinutes(-25),
+                    TableId = tableGranja3.Id,
+                    UserId = waiterGranja.Id
+                };
+                context.Orders.Add(openOrder);
+                await context.SaveChangesAsync();
+
+                context.OrderDetails.AddRange(
+                    new OrderDetail
+                    {
+                        OrderId = openOrder.Id,
+                        ProductId = productsByCode["BR-04"].Id,
+                        Quantity = 4,
+                        UnitPrice = productsByCode["BR-04"].SalePrice
+                    },
+                    new OrderDetail
+                    {
+                        OrderId = openOrder.Id,
+                        ProductId = productsByCode["RM-01"].Id,
+                        Quantity = 1,
+                        UnitPrice = productsByCode["RM-01"].SalePrice
+                    }
+                );
+
+                tableGranja3.Status = "Occupied";
+                await context.SaveChangesAsync();
+            }
         }
     }
 }

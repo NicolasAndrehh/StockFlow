@@ -1,9 +1,10 @@
+#nullable enable
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using StockFlow.API.Data;
-using StockFlow.API.Models;
+using StockFlow.API.Services;
 
 namespace StockFlow.API.Controllers
 {
@@ -20,16 +21,23 @@ namespace StockFlow.API.Controllers
         public List<OrderItemRequest> Items { get; set; } = new();
     }
 
+    public class CheckoutOrderRequest
+    {
+        public string PaymentMethod { get; set; } = "Cash";
+    }
+
     [Route("api/orders")]
     [ApiController]
     [Authorize]
     public class OrdersController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly IOrderBillingService _orderBillingService;
 
-        public OrdersController(AppDbContext context)
+        public OrdersController(AppDbContext context, IOrderBillingService orderBillingService)
         {
             _context = context;
+            _orderBillingService = orderBillingService;
         }
 
         // Consulto la orden abierta de una mesa junto con el listado de productos registrados
@@ -41,7 +49,10 @@ namespace StockFlow.API.Controllers
                 return BadRequest(new { message = "Error: A valid tableId is required." });
             }
 
-            var table = await _context.Tables.FindAsync(tableId);
+            var table = await _context.Tables
+                .AsNoTracking()
+                .FirstOrDefaultAsync(t => t.Id == tableId);
+
             if (table == null)
             {
                 return NotFound(new { message = "Error: Table not found." });
@@ -52,44 +63,27 @@ namespace StockFlow.API.Controllers
                 return StatusCode(403, new { message = "Error: You can only view orders for your assigned location." });
             }
 
-            var activeOrder = await _context.Orders
-                .Include(o => o.Table)
-                .Include(o => o.User)
-                .Where(o => o.TableId == tableId && o.Status == "Open")
-                .OrderByDescending(o => o.OpeningDate)
-                .FirstOrDefaultAsync();
+            var activeOrder = await _orderBillingService.GetActiveOrderByTableAsync(tableId);
+            return Ok(activeOrder);
+        }
 
-            if (activeOrder == null)
+        // Consulto todas las órdenes de una sede para la pantalla de cierre de pedidos del Cajero (HU-12)
+        [HttpGet("location")]
+        [Authorize(Roles = "Administrator,Cashier")]
+        public async Task<IActionResult> GetOrdersByLocation([FromQuery] int locationId)
+        {
+            if (locationId <= 0)
             {
-                return Ok(null);
+                return BadRequest(new { message = "Error: A valid locationId is required." });
             }
 
-            var details = await _context.OrderDetails
-                .Include(d => d.Product)
-                .Where(d => d.OrderId == activeOrder.Id)
-                .Select(d => new
-                {
-                    d.Id,
-                    d.ProductId,
-                    ProductCode = d.Product != null ? d.Product.Code : "",
-                    ProductName = d.Product != null ? d.Product.Name : "Product",
-                    d.Quantity,
-                    d.UnitPrice,
-                    Subtotal = d.Quantity * d.UnitPrice
-                })
-                .ToListAsync();
-
-            return Ok(new
+            if (!HasLocationAccess(locationId))
             {
-                activeOrder.Id,
-                activeOrder.Status,
-                activeOrder.OpeningDate,
-                activeOrder.TableId,
-                TableNumber = activeOrder.Table?.Number ?? 0,
-                WaiterName = activeOrder.User?.Name ?? "Staff",
-                Details = details,
-                Total = details.Sum(d => d.Subtotal)
-            });
+                return StatusCode(403, new { message = "Error: You can only view orders for your assigned location." });
+            }
+
+            var orders = await _orderBillingService.GetOrdersByLocationAsync(locationId);
+            return Ok(orders);
         }
 
         // Guardo el pedido sobre una mesa libre, descuento el stock de la sede y marco la mesa como ocupada
@@ -107,130 +101,106 @@ namespace StockFlow.API.Controllers
                 return StatusCode(403, new { message = "Error: You can only register orders for your assigned location." });
             }
 
-            if (request.Items == null || request.Items.Count == 0)
-            {
-                return BadRequest(new { message = "Error: The order must contain at least one product." });
-            }
-
-            var table = await _context.Tables
-                .FirstOrDefaultAsync(t => t.Id == request.TableId && t.LocationId == request.LocationId);
-
-            if (table == null)
-            {
-                return BadRequest(new { message = "Error: The selected table does not belong to the active location." });
-            }
-
-            // Según HU-08, solo permito iniciar un pedido nuevo sobre una mesa que esté libre
-            if (table.Status != "Available")
-            {
-                return BadRequest(new { message = $"Error: Table #{table.Number} is currently occupied. New orders can only be started on an available table." });
-            }
-
-            // Agrupo por producto en caso de que el mismo ítem venga repetido en la solicitud
-            var groupedItems = request.Items
-                .GroupBy(i => i.ProductId)
-                .Select(g => new { ProductId = g.Key, Quantity = g.Sum(x => x.Quantity) })
+            var userId = ResolveCurrentUserId();
+            var items = (request.Items ?? new List<OrderItemRequest>())
+                .Select(i => new OrderItemDto { ProductId = i.ProductId, Quantity = i.Quantity })
                 .ToList();
 
-            if (groupedItems.Any(i => i.Quantity <= 0))
+            var (success, message, orderId) = await _orderBillingService.CreateOrderAsync(
+                request.LocationId,
+                request.TableId,
+                userId,
+                items);
+
+            if (!success)
             {
-                return BadRequest(new { message = "Error: Product quantities must be greater than zero." });
+                return BadRequest(new { message });
             }
-
-            var productIds = groupedItems.Select(i => i.ProductId).ToList();
-
-            var products = await _context.Products
-                .Where(p => productIds.Contains(p.Id))
-                .ToDictionaryAsync(p => p.Id);
-
-            var inventories = await _context.LocationInventories
-                .Where(li => li.LocationId == request.LocationId && productIds.Contains(li.ProductId))
-                .ToDictionaryAsync(li => li.ProductId);
-
-            // Verifico que todos los productos existan y tengan stock suficiente en la sede actual
-            foreach (var item in groupedItems)
-            {
-                if (!products.TryGetValue(item.ProductId, out var product))
-                {
-                    return BadRequest(new { message = $"Error: Product ID {item.ProductId} does not exist." });
-                }
-
-                if (!inventories.TryGetValue(item.ProductId, out var inv) || inv.AvailableQuantity < item.Quantity)
-                {
-                    var available = inv?.AvailableQuantity ?? 0;
-                    return BadRequest(new
-                    {
-                        message = $"Error: Insufficient stock for '{product.Name}'. Available: {available}, Requested: {item.Quantity}."
-                    });
-                }
-            }
-
-            int? userId = null;
-            var idClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("id")?.Value;
-            if (int.TryParse(idClaim, out int parsedId))
-            {
-                userId = parsedId;
-            }
-            else
-            {
-                var fallbackUser = await _context.Users.FirstOrDefaultAsync(u => u.LocationId == request.LocationId && u.Role == "Waiter")
-                                   ?? await _context.Users.FirstOrDefaultAsync(u => u.LocationId == request.LocationId)
-                                   ?? await _context.Users.FirstOrDefaultAsync();
-                userId = fallbackUser?.Id;
-            }
-
-            if (!userId.HasValue)
-            {
-                return BadRequest(new { message = "Error: No valid user found to assign the order." });
-            }
-
-            // Creo la orden en estado Abierto hasta que el Cajero realice el cierre
-            var order = new Order
-            {
-                Status = "Open",
-                OpeningDate = DateTime.UtcNow,
-                TableId = table.Id,
-                UserId = userId.Value
-            };
-
-            _context.Orders.Add(order);
-            await _context.SaveChangesAsync();
-
-            // Registro cada detalle del pedido y descuento las unidades del inventario de la sede
-            foreach (var item in groupedItems)
-            {
-                var product = products[item.ProductId];
-                var inv = inventories[item.ProductId];
-
-                inv.AvailableQuantity -= item.Quantity;
-
-                _context.OrderDetails.Add(new OrderDetail
-                {
-                    OrderId = order.Id,
-                    ProductId = product.Id,
-                    Quantity = item.Quantity,
-                    UnitPrice = product.SalePrice
-                });
-            }
-
-            // Paso la mesa automáticamente a estado Ocupada (HU-08 / HU-11)
-            table.Status = "Occupied";
-
-            _context.AuditRecords.Add(new AuditRecord
-            {
-                Action = $"CREATE_ORDER:Order={order.Id}:Table={table.Number}:Loc={request.LocationId}",
-                Entity = "Order",
-                Date = DateTime.UtcNow,
-                UserId = userId.Value
-            });
-
-            await _context.SaveChangesAsync();
 
             return Ok(new
             {
-                message = $"Order #{order.Id} saved for Table #{table.Number}. Status is now Open and table is Occupied.",
-                orderId = order.Id
+                message,
+                orderId
             });
+        }
+
+        // Cierro el pedido, registro el medio de pago único sin recargos y genero la factura física (HU-12, HU-13, HU-14)
+        [HttpPost("{id}/checkout")]
+        [Authorize(Roles = "Administrator,Cashier")]
+        public async Task<IActionResult> CheckoutOrder(int id, [FromBody] CheckoutOrderRequest request)
+        {
+            var order = await _context.Orders
+                .AsNoTracking()
+                .Include(o => o.Table)
+                .FirstOrDefaultAsync(o => o.Id == id);
+
+            if (order == null || order.Table == null)
+            {
+                return NotFound(new { message = "Error: Order not found." });
+            }
+
+            if (!HasLocationAccess(order.Table.LocationId))
+            {
+                return StatusCode(403, new { message = "Error: You can only close orders belonging to your assigned location." });
+            }
+
+            var userId = ResolveCurrentUserId();
+            if (userId <= 0)
+            {
+                var fallback = await _context.Users.AsNoTracking().FirstOrDefaultAsync();
+                userId = fallback?.Id ?? 1;
+            }
+
+            var (success, message, invoice) = await _orderBillingService.CheckoutOrderAsync(
+                id,
+                userId,
+                request.PaymentMethod);
+
+            if (!success)
+            {
+                return BadRequest(new { message });
+            }
+
+            return Ok(new
+            {
+                message,
+                invoice
+            });
+        }
+
+        // Consulto la factura física no electrónica de un pedido cerrado para mostrarla o imprimirla (HU-14)
+        [HttpGet("{id}/invoice")]
+        [Authorize(Roles = "Administrator,Cashier")]
+        public async Task<IActionResult> GetInvoiceByOrder(int id)
+        {
+            var order = await _context.Orders
+                .AsNoTracking()
+                .Include(o => o.Table)
+                .FirstOrDefaultAsync(o => o.Id == id);
+
+            if (order == null || order.Table == null)
+            {
+                return NotFound(new { message = "Error: Order not found." });
+            }
+
+            if (!HasLocationAccess(order.Table.LocationId))
+            {
+                return StatusCode(403, new { message = "Error: You can only view invoices for your assigned location." });
+            }
+
+            var invoice = await _orderBillingService.GetInvoiceByOrderIdAsync(id);
+            if (invoice == null)
+            {
+                return NotFound(new { message = "Error: Invoice not found for this order." });
+            }
+
+            return Ok(invoice);
+        }
+
+        private int ResolveCurrentUserId()
+        {
+            var idClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("id")?.Value;
+            return int.TryParse(idClaim, out int parsedId) ? parsedId : 0;
         }
 
         private bool HasLocationAccess(int requestedLocationId)
