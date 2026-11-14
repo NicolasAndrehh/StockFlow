@@ -1,4 +1,10 @@
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5082/api';
+// Normalizo la URL base de la API para que funcione en Vercel tanto si VITE_API_URL termina en /api como si no
+const rawEnvUrl = (import.meta.env.VITE_API_URL as string | undefined)?.trim().replace(/\/+$/, '');
+const BASE_URL = rawEnvUrl
+  ? rawEnvUrl.endsWith('/api')
+    ? rawEnvUrl
+    : `${rawEnvUrl}/api`
+  : 'http://localhost:5082/api';
 
 let authToken: string | null = null;
 

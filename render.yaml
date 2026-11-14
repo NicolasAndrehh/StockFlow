@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: stockflow-api
+    runtime: docker
+    rootDir: StockFlow.API
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: MYSQL_CONNECTION_STRING
+        sync: false
+      - key: Jwt__Key
+        value: StockFlow-Super-Secret-Key-2026-Minimum-32-Characters
+      - key: Jwt__Issuer
+        value: StockFlow.API
+      - key: Jwt__Audience
+        value: StockFlow.UI
