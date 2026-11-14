@@ -1,10 +1,13 @@
 // Normalizo la URL base de la API para que funcione en Vercel tanto si VITE_API_URL termina en /api como si no
 const rawEnvUrl = (import.meta.env.VITE_API_URL as string | undefined)?.trim().replace(/\/+$/, '');
+const defaultApiUrl = import.meta.env.PROD
+  ? 'https://stockflow-api-production-77b12a66.up.railway.app/api'
+  : 'http://localhost:5082/api';
 const BASE_URL = rawEnvUrl
   ? rawEnvUrl.endsWith('/api')
     ? rawEnvUrl
     : `${rawEnvUrl}/api`
-  : 'http://localhost:5082/api';
+  : defaultApiUrl;
 
 let authToken: string | null = null;
 
