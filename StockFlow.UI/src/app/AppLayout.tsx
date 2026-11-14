@@ -1,17 +1,18 @@
 import { useEffect, useState } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Topbar } from '../components/common/TopBar/TopBar';
 import { SidebarNav } from '../components/common/SideBarNav/SideBarNav';
 import { Button } from '../components/common/Button/Button';
-import { useAuth } from '../components/features/Auth/AuthContext';
+import { useAuth, type OperatingRole } from '../components/features/Auth/AuthContext';
 import { locationsApi } from '../components/features/Locations/locations.api';
 import type { Location } from '../components/features/Locations/locations.api';
 import styles from './AppLayout.module.scss';
 
 export function AppLayout() {
-  const { user, activeLocation, selectLocation, logout } = useAuth();
+  const { user, activeLocation, operatingRole, selectLocation, selectOperatingRole, logout } = useAuth();
   const [locations, setLocations] = useState<Location[]>([]);
   const routeLocation = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (user?.role === 'Administrator') {
@@ -19,15 +20,11 @@ export function AppLayout() {
         .getAll()
         .then((locs) => {
           setLocations(locs);
-          if (locs.length > 0) {
-            const currentValid = activeLocation && locs.some((l) => l.id === activeLocation.id);
-            if (!currentValid) {
-              selectLocation({ id: locs[0].id, name: locs[0].name });
-            } else {
-              const updated = locs.find((l) => l.id === activeLocation.id);
-              if (updated && updated.name !== activeLocation.name) {
-                selectLocation({ id: updated.id, name: updated.name });
-              }
+          // Si ya tenía una sede activa y le cambié el nombre en el catálogo, sincronizo el chip
+          if (activeLocation) {
+            const updated = locs.find((l) => l.id === activeLocation.id);
+            if (updated && updated.name !== activeLocation.name) {
+              selectLocation({ id: updated.id, name: updated.name });
             }
           }
         })
@@ -35,6 +32,19 @@ export function AppLayout() {
     }
   }, [user?.role, routeLocation.pathname]);
 
+  // Al cambiar entre la vista general de Administrador y los roles operativos (Cashier o Waiter), redirijo a la pantalla principal de ese rol
+  const handleSwitchAdminOperatingRole = (nextRole: OperatingRole) => {
+    selectOperatingRole(nextRole);
+    if (nextRole === 'Administrator') {
+      navigate('/products');
+    } else if (nextRole === 'Cashier') {
+      navigate('/inventory');
+    } else {
+      navigate('/tables');
+    }
+  };
+
+  // Vista general del Administrador: solo catálogos y administración general
   const adminGroups = [
     {
       title: 'Catalog',
@@ -46,19 +56,12 @@ export function AppLayout() {
       ],
     },
     {
-      title: 'Operation',
-      items: [
-        { label: 'Inventory', path: '/inventory' },
-        { label: 'Tables', path: '/tables' },
-        { label: 'Orders', path: '/orders' },
-      ],
-    },
-    {
       title: 'Administration',
       items: [{ label: 'Users', path: '/users' }],
     },
   ];
 
+  // Vista exacta de Cajero
   const cashierGroups = [
     {
       title: 'Operation',
@@ -66,6 +69,7 @@ export function AppLayout() {
     },
   ];
 
+  // Vista exacta de Mesero
   const waiterGroups = [
     {
       title: 'Operation',
@@ -76,9 +80,14 @@ export function AppLayout() {
     },
   ];
 
+  // Si el Administrador asume el rol de Cajero o Mesero, muestro exactamente el mismo menú lateral de ese rol (HU-06)
   const groups =
     user?.role === 'Administrator'
-      ? adminGroups
+      ? operatingRole === 'Cashier'
+        ? cashierGroups
+        : operatingRole === 'Waiter'
+        ? waiterGroups
+        : adminGroups
       : user?.role === 'Cashier'
       ? cashierGroups
       : user?.role === 'Waiter'
@@ -88,7 +97,7 @@ export function AppLayout() {
   return (
     <div className={styles.app}>
       <Topbar
-        sedeLabel={activeLocation?.name ?? 'No location'}
+        sedeLabel={activeLocation?.name ?? 'Select location'}
         locations={user?.role === 'Administrator' ? locations : undefined}
         selectedLocationId={activeLocation?.id ?? null}
         onSelectLocation={
@@ -96,9 +105,18 @@ export function AppLayout() {
             ? (loc) => selectLocation({ id: loc.id, name: loc.name })
             : undefined
         }
+        operatingRole={user?.role === 'Administrator' ? operatingRole : undefined}
+        onSelectOperatingRole={
+          user?.role === 'Administrator' ? handleSwitchAdminOperatingRole : undefined
+        }
         rightSlot={
           <>
-            <span>{user?.name} · {user?.role}</span>
+            <span>
+              {user?.name} ·{' '}
+              {user?.role === 'Administrator' && operatingRole !== 'Administrator'
+                ? `Admin (${operatingRole} View)`
+                : user?.role}
+            </span>
             <Button variant="mini" onClick={logout}>Sign out</Button>
           </>
         }

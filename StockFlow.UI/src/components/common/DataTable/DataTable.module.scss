@@ -1,7 +1,28 @@
+.tableWrapper {
+  overflow: auto;
+  max-inline-size: 100%;
+  max-block-size: min(560px, 78vh);
+  container-type: inline-size;
+  border-radius: 8px;
+
+  &:focus-visible {
+    outline: 2px solid var(--cyan);
+    outline-offset: 2px;
+  }
+}
+
 .table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: .87rem;
+
+  thead {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 1;
+    background: var(--panel);
+  }
 
   th {
     text-align: left;
@@ -12,6 +33,8 @@
     letter-spacing: .04em;
     padding: .55rem .6rem;
     border-bottom: 1px solid var(--line);
+    background: var(--panel);
+    white-space: nowrap;
   }
 
   td {

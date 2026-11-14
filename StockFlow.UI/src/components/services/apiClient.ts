@@ -22,7 +22,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     try {
       data = await response.json();
     } catch {
-      // No JSON content in response
+      // Si la respuesta no trae cuerpo JSON continúo sin lanzar excepción
     }
   }
 

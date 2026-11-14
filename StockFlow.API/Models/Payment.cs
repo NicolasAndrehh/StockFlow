@@ -7,11 +7,11 @@ namespace StockFlow.API.Models
         public decimal AmountPaid { get; set; }
         public DateTime PaymentDate { get; set; }
 
-        // Foreign key Order
+        // Llave foránea del pedido que se está cobrando
         public int OrderId { get; set; }
         public Order Order { get; set; }
 
-        // Foreign key User (Cajero)
+        // Llave foránea del cajero que recibió el pago
         public int UserId { get; set; }
         public User User { get; set; }
     }

@@ -2,13 +2,13 @@ import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { authApi } from './auth.api';
 import { setAuthToken } from '../../services/apiClient';
-import { locationsApi } from '../Locations/locations.api';
 
 export type Role = 'Administrator' | 'Cashier' | 'Waiter';
+export type OperatingRole = 'Administrator' | 'Cashier' | 'Waiter';
 
 interface AuthUser {
   role: Role;
-  locationId: number | null; // sede fija para Cashier/Waiter
+  locationId: number | null; // Sede fija asignada para Cashier y Waiter
   name: string;
 }
 
@@ -20,9 +20,11 @@ export interface ActiveLocation {
 interface AuthContextValue {
   user: AuthUser | null;
   activeLocation: ActiveLocation | null;
+  operatingRole: OperatingRole;
   login: (code: string, password: string) => Promise<void>;
   logout: () => void;
   selectLocation: (location: ActiveLocation) => void;
+  selectOperatingRole: (role: OperatingRole) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -31,14 +33,17 @@ const INACTIVITY_LIMIT_MS = 3 * 60 * 1000;
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [activeLocation, setActiveLocation] = useState<ActiveLocation | null>(null);
+  const [operatingRole, setOperatingRole] = useState<OperatingRole>('Administrator');
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const logout = () => {
     setUser(null);
     setActiveLocation(null);
+    setOperatingRole('Administrator');
     setAuthToken(null);
   };
 
+  // Reinicio el contador de 3 minutos cada vez que detecto actividad del usuario (HU-19)
   const resetTimer = () => {
     if (timerRef.current !== null) clearTimeout(timerRef.current);
     if (user) timerRef.current = setTimeout(logout, INACTIVITY_LIMIT_MS);
@@ -57,18 +62,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser({ role: res.role, locationId: res.locationId, name: res.name });
 
     if (res.role !== 'Administrator' && res.locationId != null && res.locationName) {
-      // Cashier/Waiter ya tienen sede fija asignada
+      // Cajeros y Meseros entran directamente con su única sede asignada y su rol operativo fijo
       setActiveLocation({ id: res.locationId, name: res.locationName });
-    } else if (res.role === 'Administrator') {
-      // Preselecciona automáticamente la primera sede disponible sin bloquear el ingreso
-      try {
-        const locs = await locationsApi.getAll();
-        if (locs.length > 0) {
-          setActiveLocation({ id: locs[0].id, name: locs[0].name });
-        }
-      } catch {
-        // Si falla o no hay sedes aún, entra igual y el selector del menú lo gestionará
-      }
+      setOperatingRole(res.role === 'Waiter' ? 'Waiter' : 'Cashier');
+    } else {
+      // El Administrador entra por defecto en su vista general de administración y elige su sede activa (HU-06)
+      setActiveLocation(null);
+      setOperatingRole('Administrator');
     }
   };
 
@@ -76,8 +76,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setActiveLocation(location);
   };
 
+  const selectOperatingRole = (role: OperatingRole) => {
+    setOperatingRole(role);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, activeLocation, login, logout, selectLocation }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        activeLocation,
+        operatingRole,
+        login,
+        logout,
+        selectLocation,
+        selectOperatingRole,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

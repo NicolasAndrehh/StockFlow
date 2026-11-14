@@ -1,14 +1,15 @@
-namespace StockFlow.API.Models 
+#nullable enable
+namespace StockFlow.API.Models
 {
     public class LocationInventory
     {
         public int Id { get; set; }
-        
-        // Foreign key Location
+
+        // Llave foránea de la sede propietaria del stock
         public int LocationId { get; set; }
         public Location? Location { get; set; }
 
-        // Foreign key Product
+        // Llave foránea del producto en inventario
         public int ProductId { get; set; }
         public Product? Product { get; set; }
 

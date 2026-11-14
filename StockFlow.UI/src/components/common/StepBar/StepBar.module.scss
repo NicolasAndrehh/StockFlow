@@ -1,17 +1,51 @@
+.wrapper {
+  margin-bottom: 1.25rem;
+}
+
 .steps {
   display: flex;
   gap: .4rem;
-  margin-bottom: 1.4rem;
+  margin-bottom: .5rem;
 
   span {
     flex: 1;
-    height: 4px;
+    height: 5px;
     background: var(--line);
     border-radius: 3px;
+    transition: background 0.2s ease, box-shadow 0.2s ease;
   }
 }
 
 .on {
-  background: var(--blue);
-  box-shadow: 0 0 10px rgba(10,132,255,.6);
+  background: var(--blue) !important;
+  box-shadow: 0 0 10px rgba(10, 132, 255, .6);
+}
+
+.labels {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: .4rem;
+
+  @media (max-width: 720px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.labelItem {
+  font-size: .75rem;
+  color: var(--dim);
+  font-weight: 500;
+}
+
+.current {
+  color: var(--cyan);
+  font-weight: 700;
+}
+
+.done {
+  color: var(--ink);
+}
+
+.stepNum {
+  font-weight: 700;
 }

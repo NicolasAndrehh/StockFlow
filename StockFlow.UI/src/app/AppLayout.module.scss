@@ -7,10 +7,18 @@
 .body {
   display: flex;
   flex: 1;
+
+  @media (max-width: 860px) {
+    flex-direction: column;
+  }
 }
 
 .content {
   flex: 1;
   padding: 1.6rem 2rem;
   overflow-x: auto;
+
+  @media (max-width: 860px) {
+    padding: 1.1rem 1rem;
+  }
 }

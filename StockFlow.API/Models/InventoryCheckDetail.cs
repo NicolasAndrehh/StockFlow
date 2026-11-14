@@ -1,14 +1,15 @@
+#nullable enable
 namespace StockFlow.API.Models
 {
     public class InventoryCheckDetail
     {
         public int Id { get; set; }
-                
-        // Foreign key InventoryCheck
+
+        // Llave foránea del encabezado de chequeo de inventario
         public int InventoryCheckId { get; set; }
         public InventoryCheck? InventoryCheck { get; set; }
 
-        // Foreign key Product
+        // Llave foránea del producto contado
         public int ProductId { get; set; }
         public Product? Product { get; set; }
 

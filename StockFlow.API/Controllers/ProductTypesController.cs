@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using StockFlow.API.Data;
@@ -7,6 +8,7 @@ namespace StockFlow.API.Controllers
 {
     [Route("api/product-types")]
     [ApiController]
+    [Authorize]
     public class ProductTypesController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -32,9 +34,17 @@ namespace StockFlow.API.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Administrator")]
         public async Task<IActionResult> CreateProductType([FromBody] ProductType productType)
         {
-            // Validamos que el nombre no se repita
+            if (string.IsNullOrWhiteSpace(productType.Name))
+            {
+                return BadRequest(new { message = "Error: Product type name is required." });
+            }
+
+            productType.Name = productType.Name.Trim();
+
+            // Evito nombres duplicados en las categorías de producto
             var nameExists = await _context.ProductTypes.AnyAsync(t => t.Name == productType.Name);
             if (nameExists)
             {
@@ -48,12 +58,17 @@ namespace StockFlow.API.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = "Administrator")]
         public async Task<IActionResult> UpdateProductType(int id, [FromBody] ProductType productType)
         {
-            // Validamos que los IDs coincidan
             if (id != productType.Id)
             {
                 return BadRequest(new { message = "Error: The URL ID does not match the request body ID." });
+            }
+
+            if (string.IsNullOrWhiteSpace(productType.Name))
+            {
+                return BadRequest(new { message = "Error: Product type name is required." });
             }
 
             var existingType = await _context.ProductTypes.FindAsync(id);
@@ -62,14 +77,16 @@ namespace StockFlow.API.Controllers
                 return NotFound(new { message = "Error: Product type not found." });
             }
 
-            // Validamos que el nuevo nombre no choque con otro ya existente
-            var nameExists = await _context.ProductTypes.AnyAsync(t => t.Name == productType.Name && t.Id != id);
+            var cleanName = productType.Name.Trim();
+
+            // Reviso que el nuevo nombre no esté asignado a otro tipo
+            var nameExists = await _context.ProductTypes.AnyAsync(t => t.Name == cleanName && t.Id != id);
             if (nameExists)
             {
                 return BadRequest(new { message = "Error: This product type already exists." });
             }
 
-            existingType.Name = productType.Name;
+            existingType.Name = cleanName;
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Product type updated successfully.", productType = existingType });

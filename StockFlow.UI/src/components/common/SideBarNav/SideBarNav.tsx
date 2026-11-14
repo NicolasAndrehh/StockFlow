@@ -17,21 +17,23 @@ interface SidebarNavProps {
 
 export function SidebarNav({ groups }: SidebarNavProps) {
   return (
-    <aside className={styles.nav}>
+    <nav className={styles.nav} aria-label="Primary">
       {groups.map((group) => (
-        <div key={group.title}>
+        <div key={group.title} className={styles.groupBlock}>
           <div className={styles.grp}>{group.title}</div>
-          {group.items.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={({ isActive }) => `${styles.navBtn} ${isActive ? styles.on : ''}`}
-            >
-              {item.label}
-            </NavLink>
-          ))}
+          <div className={styles.groupLinks}>
+            {group.items.map((item) => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                className={({ isActive }) => `${styles.navBtn} ${isActive ? styles.on : ''}`}
+              >
+                {item.label}
+              </NavLink>
+            ))}
+          </div>
         </div>
       ))}
-    </aside>
+    </nav>
   );
 }

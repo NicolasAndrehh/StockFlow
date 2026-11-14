@@ -5,6 +5,38 @@
   display: flex;
   flex-direction: column;
   gap: .15rem;
+  min-width: 200px;
+
+  @media (max-width: 860px) {
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+    padding: .75rem 1rem;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 1rem;
+    min-width: 0;
+  }
+}
+
+.groupBlock {
+  @media (max-width: 860px) {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    flex-wrap: wrap;
+  }
+}
+
+.groupLinks {
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+
+  @media (max-width: 860px) {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: .35rem;
+  }
 }
 
 .navBtn {
@@ -13,6 +45,7 @@
   text-align: left;
   background: none;
   border: none;
+  border-inline-start: 3px solid transparent;
   color: var(--muted);
   padding: .55rem .75rem;
   border-radius: 10px;
@@ -21,12 +54,24 @@
   text-decoration: none;
   cursor: pointer;
 
-  &:hover { background: var(--panel2); color: var(--ink); }
+  &:hover {
+    background: var(--panel2);
+    color: var(--ink);
+  }
+
+  @media (max-width: 860px) {
+    width: auto;
+    padding: .4rem .65rem;
+    font-size: .82rem;
+  }
 }
 
-.on {
+.on,
+.navBtn[aria-current="page"] {
   background: var(--blue-tint);
   color: var(--cyan);
+  border-inline-start-color: var(--cyan);
+  font-weight: 600;
 }
 
 .grp {
@@ -37,5 +82,11 @@
   font-weight: 600;
   margin: 1.1rem 0 .4rem .75rem;
 
-  &:first-child { margin-top: 0; }
+  .groupBlock:first-child & {
+    margin-top: 0;
+  }
+
+  @media (max-width: 860px) {
+    margin: 0 .25rem 0 0;
+  }
 }

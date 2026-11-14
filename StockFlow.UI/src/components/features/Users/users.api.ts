@@ -18,7 +18,7 @@ export interface UserPayload {
   role: string;
   locationId?: number | null;
   status: boolean;
-  password?: string; // solo se manda al crear o al cambiar la contraseña
+  password?: string; // Solo lo envío cuando creo el usuario o cuando actualizo su clave
 }
 
 interface UserMutationResponse {

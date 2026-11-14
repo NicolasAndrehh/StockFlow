@@ -5,19 +5,24 @@ interface DataTableProps<T> {
   columns: string[];
   rows: T[];
   renderRow: (row: T, index: number) => ReactNode;
+  ariaLabel?: string;
 }
 
-export function DataTable<T>({ columns, rows, renderRow }: DataTableProps<T>) {
+export function DataTable<T>({ columns, rows, renderRow, ariaLabel = 'Data table' }: DataTableProps<T>) {
   return (
-    <table className={styles.table}>
-      <thead>
-        <tr>
-          {columns.map((col) => <th key={col}>{col}</th>)}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row, i) => renderRow(row, i))}
-      </tbody>
-    </table>
+    <div className={styles.tableWrapper} tabIndex={0} role="region" aria-label={ariaLabel}>
+      <table className={styles.table}>
+        <thead>
+          <tr>
+            {columns.map((col, idx) => (
+              <th key={`${col}-${idx}`}>{col}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => renderRow(row, i))}
+        </tbody>
+      </table>
+    </div>
   );
 }

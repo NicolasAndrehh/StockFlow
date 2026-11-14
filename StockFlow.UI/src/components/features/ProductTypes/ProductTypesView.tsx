@@ -20,12 +20,14 @@ export default function ProductTypesView() {
     try {
       const data = await productTypesApi.getAll();
       setTypes(data);
-    } catch (error) {
-      showToast('Error al cargar tipos de producto');
+    } catch {
+      showToast('Error loading product types.');
     }
   };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const resetForm = () => {
     setEditingId(null);
@@ -38,6 +40,11 @@ export default function ProductTypesView() {
   };
 
   const handleSave = async () => {
+    if (!form.name.trim()) {
+      showToast('Please enter a product type name.');
+      return;
+    }
+
     try {
       if (editingId) {
         const res = await productTypesApi.update(editingId, form);
@@ -49,7 +56,7 @@ export default function ProductTypesView() {
       resetForm();
       loadData();
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Error saving type.');
+      showToast(error instanceof Error ? error.message : 'Error saving product type.');
     }
   };
 
@@ -61,13 +68,18 @@ export default function ProductTypesView() {
           <Card>
             <h3>Product Types</h3>
             <DataTable
-              columns={['Type', 'Associated products']}
+              columns={['Type', 'Associated products', '']}
               rows={types}
+              ariaLabel="Product types"
               renderRow={(t) => (
                 <tr key={t.id}>
                   <td>{t.name}</td>
                   <td>{t.associatedProducts}</td>
-                  <td><Button variant="mini" onClick={() => handleEdit(t)}>Edit</Button></td>
+                  <td>
+                    <Button variant="mini" onClick={() => handleEdit(t)}>
+                      Edit
+                    </Button>
+                  </td>
                 </tr>
               )}
             />
@@ -80,12 +92,18 @@ export default function ProductTypesView() {
           <Card>
             <h3>{editingId ? 'Edit Type' : 'New Type'}</h3>
             <FormField
-              label="Type name" placeholder="Ej. Beer, Wine, Soft Drink" value={form.name}
+              label="Type name"
+              placeholder="e.g. Beer, Wine, Soft Drink"
+              value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
             />
             <div style={{ display: 'flex', gap: '10px' }}>
               <Button onClick={handleSave}>{editingId ? 'Update Type' : 'Save Type'}</Button>
-              {editingId && <Button variant="ghost" onClick={resetForm}>Cancel</Button>}
+              {editingId && (
+                <Button variant="ghost" onClick={resetForm}>
+                  Cancel
+                </Button>
+              )}
             </div>
           </Card>
         }

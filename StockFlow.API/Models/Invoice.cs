@@ -6,7 +6,7 @@ namespace StockFlow.API.Models
         public string InvoiceNumber { get; set; }
         public DateTime IssuedDate { get; set; }
 
-        // Foreign key Payment
+        // Llave foránea del pago asociado a la factura física
         public int PaymentId { get; set; }
         public Payment Payment { get; set; }
     }

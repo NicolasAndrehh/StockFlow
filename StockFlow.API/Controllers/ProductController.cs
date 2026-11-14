@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using StockFlow.API.Data;
@@ -7,6 +8,7 @@ namespace StockFlow.API.Controllers
 {
     [Route("api/products")]
     [ApiController]
+    [Authorize]
     public class ProductsController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -22,15 +24,25 @@ namespace StockFlow.API.Controllers
             var products = await _context.Products
                 .Include(p => p.ProductType)
                 .Include(p => p.Supplier)
+                .OrderBy(p => p.Name)
                 .ToListAsync();
 
             return Ok(products);
         }
 
         [HttpPost]
+        [Authorize(Roles = "Administrator")]
         public async Task<IActionResult> CreateProduct([FromBody] Product product)
         {
-            // Validamos precios positivos y rentabilidad (Precio de compra < Precio de venta)
+            if (string.IsNullOrWhiteSpace(product.Code) || string.IsNullOrWhiteSpace(product.Name))
+            {
+                return BadRequest(new { message = "Error: Product code and name are required." });
+            }
+
+            product.Code = product.Code.Trim();
+            product.Name = product.Name.Trim();
+
+            // Aseguro que los precios sean positivos y que el precio de venta deje margen sobre el de compra
             if (product.PurchasePrice <= 0 || product.SalePrice <= 0)
             {
                 return BadRequest(new { message = "Error: Purchase price and sale price must be greater than zero." });
@@ -41,21 +53,20 @@ namespace StockFlow.API.Controllers
                 return BadRequest(new { message = "Error: Purchase price must be strictly less than the sale price to ensure a profit margin." });
             }
 
-            // Validamos que el código sea único
+            // Verifico que el código del producto no exista ya en el catálogo
             var codeExists = await _context.Products.AnyAsync(p => p.Code == product.Code);
             if (codeExists)
             {
                 return BadRequest(new { message = "Error: A product with this code already exists." });
             }
 
-            // Validamos que el tipo de producto exista
+            // Confirmo que el tipo de producto y el proveedor estén registrados
             var typeExists = await _context.ProductTypes.AnyAsync(t => t.Id == product.ProductTypeId);
             if (!typeExists)
             {
                 return BadRequest(new { message = "Error: The specified product type does not exist." });
             }
 
-            // Validamos que el proveedor exista
             var supplierExists = await _context.Suppliers.AnyAsync(s => s.Id == product.SupplierId);
             if (!supplierExists)
             {
@@ -69,6 +80,7 @@ namespace StockFlow.API.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = "Administrator")]
         public async Task<IActionResult> UpdateProduct(int id, [FromBody] Product product)
         {
             if (id != product.Id)
@@ -76,7 +88,12 @@ namespace StockFlow.API.Controllers
                 return BadRequest(new { message = "Error: The URL ID does not match the request body ID." });
             }
 
-            // Validamos precios positivos y rentabilidad (Precio de compra < Precio de venta)
+            if (string.IsNullOrWhiteSpace(product.Code) || string.IsNullOrWhiteSpace(product.Name))
+            {
+                return BadRequest(new { message = "Error: Product code and name are required." });
+            }
+
+            // Valido precios y rentabilidad antes de actualizar
             if (product.PurchasePrice <= 0 || product.SalePrice <= 0)
             {
                 return BadRequest(new { message = "Error: Purchase price and sale price must be greater than zero." });
@@ -93,7 +110,8 @@ namespace StockFlow.API.Controllers
                 return NotFound(new { message = "Error: Product not found." });
             }
 
-            var codeExists = await _context.Products.AnyAsync(p => p.Code == product.Code && p.Id != id);
+            var cleanCode = product.Code.Trim();
+            var codeExists = await _context.Products.AnyAsync(p => p.Code == cleanCode && p.Id != id);
             if (codeExists)
             {
                 return BadRequest(new { message = "Error: A product with this code already exists." });
@@ -111,8 +129,8 @@ namespace StockFlow.API.Controllers
                 return BadRequest(new { message = "Error: The specified supplier does not exist." });
             }
 
-            existingProduct.Code = product.Code;
-            existingProduct.Name = product.Name;
+            existingProduct.Code = cleanCode;
+            existingProduct.Name = product.Name.Trim();
             existingProduct.ProductTypeId = product.ProductTypeId;
             existingProduct.SupplierId = product.SupplierId;
             existingProduct.PurchasePrice = product.PurchasePrice;

@@ -12,7 +12,7 @@ interface TicketSummaryProps {
   emptyLabel?: string;
 }
 
-export function TicketSummary({ items, formatMoney, emptyLabel = 'Sin productos aún' }: TicketSummaryProps) {
+export function TicketSummary({ items, formatMoney, emptyLabel = 'No products added yet' }: TicketSummaryProps) {
   const total = items.reduce((acc, i) => acc + i.price, 0);
 
   return (

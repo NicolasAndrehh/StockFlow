@@ -30,20 +30,45 @@ namespace StockFlow.API.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
+            if (string.IsNullOrWhiteSpace(request.Code) || string.IsNullOrWhiteSpace(request.Password))
+            {
+                return BadRequest(new { message = "Error: User code and password are required." });
+            }
+
+            var cleanCode = request.Code.Trim();
             var user = await _context.Users
                 .Include(u => u.Location)
-                .FirstOrDefaultAsync(u => u.Code == request.Code && u.Status);
+                .FirstOrDefaultAsync(u => u.Code == cleanCode);
 
-            if (user == null)
+            // Si no existe o está inactivo, devuelvo mensaje genérico por seguridad (OWASP A07)
+            if (user == null || !user.Status)
             {
-                return Unauthorized(new { message = "Error: Invalid credentials." });
+                return Unauthorized(new { message = "Error: Invalid credentials or inactive account." });
             }
 
             var result = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
             if (result == PasswordVerificationResult.Failed)
             {
-                return Unauthorized(new { message = "Error: Invalid credentials." });
+                _context.AuditRecords.Add(new AuditRecord
+                {
+                    Action = "FAILED_LOGIN",
+                    Entity = "User",
+                    Date = DateTime.UtcNow,
+                    UserId = user.Id
+                });
+                await _context.SaveChangesAsync();
+
+                return Unauthorized(new { message = "Error: Invalid credentials or inactive account." });
             }
+
+            _context.AuditRecords.Add(new AuditRecord
+            {
+                Action = "LOGIN_SUCCESS",
+                Entity = "User",
+                Date = DateTime.UtcNow,
+                UserId = user.Id
+            });
+            await _context.SaveChangesAsync();
 
             var token = GenerateJwt(user);
 

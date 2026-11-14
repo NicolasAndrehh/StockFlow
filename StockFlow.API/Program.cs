@@ -25,7 +25,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
 
-// Permite localhost y el dominio donde despliegues el frontend
+// Orígenes que habilito en CORS para pruebas locales y despliegue del Front
 var allowedOrigins = builder.Configuration["AllowedOrigins"]?.Split(',', StringSplitOptions.RemoveEmptyEntries)
     ?? new[] { "http://localhost:5173" };
 
@@ -45,7 +45,7 @@ builder.Services.AddCors(options =>
     });
 });
 
-// --- Autenticación JWT ---
+// Configuración de JWT para manejar la sesión y validar roles por sede
 var jwtKey = builder.Configuration["Jwt:Key"]!;
 var key = Encoding.UTF8.GetBytes(jwtKey);
 
@@ -61,16 +61,16 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = true,
             ValidAudience = builder.Configuration["Jwt:Audience"],
             ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero,
         };
     });
 
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
-// --- Fin autenticación JWT ---
 
 var app = builder.Build();
 
-// Ejecuta migraciones y semillas automáticamente al iniciar el servidor
+// Aplico migraciones y cargo los datos semilla al levantar la API
 await DbSeeder.SeedAsync(app.Services);
 
 if (app.Environment.IsDevelopment())

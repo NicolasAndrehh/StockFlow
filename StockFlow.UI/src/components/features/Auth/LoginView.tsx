@@ -19,7 +19,7 @@ export default function LoginView() {
     setLoading(true);
     try {
       await login(code, password);
-      // La redirección real la resuelve RequireLocationSelected/ProtectedRoute
+      // Al autenticar envío al inicio y dejo que los guards redirijan según el rol y la sede
       navigate('/', { replace: true });
     } catch {
       setError('Invalid code or password.');

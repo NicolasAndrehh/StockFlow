@@ -7,7 +7,7 @@ namespace StockFlow.API.Models
         public string Entity { get; set; }
         public DateTime Date { get; set; }
 
-        // Foreign key User
+        // Llave foránea del usuario que ejecutó la acción
         public int UserId { get; set; }
         public User User { get; set; }
     }

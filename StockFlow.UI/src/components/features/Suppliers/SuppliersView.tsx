@@ -24,12 +24,14 @@ export default function SupplierView() {
       const [s, p] = await Promise.all([suppliersApi.getAll(), productsApi.getAll()]);
       setSuppliers(s);
       setProducts(p);
-    } catch (error) {
-      showToast('Error loading suppliers');
+    } catch {
+      showToast('Error loading suppliers.');
     }
   };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const resetForm = () => {
     setEditingId(null);
@@ -41,11 +43,16 @@ export default function SupplierView() {
     setForm({ id: s.id, name: s.name });
   };
 
-  // Contamos productos vinculados filtrando por supplierId, no desde el Supplier
+  // Calculo cuántos productos del catálogo están asociados a cada proveedor
   const countLinkedProducts = (supplierId: number) =>
     products.filter((p) => p.supplierId === supplierId).length;
 
   const handleSave = async () => {
+    if (!form.name.trim()) {
+      showToast('Please enter a supplier name.');
+      return;
+    }
+
     try {
       if (editingId) {
         const res = await suppliersApi.update(editingId, form);
@@ -69,28 +76,42 @@ export default function SupplierView() {
         left={
           <Card>
             <DataTable
-              columns={['Supplier', 'Linked products']}
+              columns={['Supplier', 'Linked products', '']}
               rows={suppliers}
+              ariaLabel="Registered suppliers"
               renderRow={(s) => (
                 <tr key={s.id}>
                   <td>{s.name}</td>
                   <td>{countLinkedProducts(s.id)}</td>
-                  <td><Button variant="mini" onClick={() => handleEdit(s)}>Edit</Button></td>
+                  <td>
+                    <Button variant="mini" onClick={() => handleEdit(s)}>
+                      Edit
+                    </Button>
+                  </td>
                 </tr>
               )}
             />
+            <Button variant="ghost" onClick={resetForm} style={{ marginTop: '1rem' }}>
+              + New Supplier
+            </Button>
           </Card>
         }
         right={
           <Card>
             <h3>{editingId ? 'Edit supplier' : 'New supplier'}</h3>
             <FormField
-              label="Supplier name" value={form.name}
+              label="Supplier name"
+              placeholder="e.g. Diageo Colombia"
+              value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
             />
             <div style={{ display: 'flex', gap: '10px' }}>
-              <Button onClick={handleSave}>Save</Button>
-              {editingId && <Button variant="ghost" onClick={resetForm}>Cancel</Button>}
+              <Button onClick={handleSave}>{editingId ? 'Update Supplier' : 'Save'}</Button>
+              {editingId && (
+                <Button variant="ghost" onClick={resetForm}>
+                  Cancel
+                </Button>
+              )}
             </div>
           </Card>
         }

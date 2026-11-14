@@ -32,7 +32,7 @@ export function FormField(props: FormFieldProps) {
     const { as, options, label: _l, ...rest } = props;
     return (
       <div className={styles.field}>
-        <label>{label}</label>
+        {label && <label>{label}</label>}
         <select {...rest}>
           {options.map((opt) => (
             <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -47,13 +47,14 @@ export function FormField(props: FormFieldProps) {
     const displayValue = value === 0 ? '' : thousandsFormatter.format(value);
 
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-      const digitsOnly = e.target.value.replace(/\D/g, ''); // deja solo números, ignora puntos/comas
+      // Dejo únicamente los dígitos numéricos e ignoro los separadores de miles
+      const digitsOnly = e.target.value.replace(/\D/g, '');
       onChange(digitsOnly === '' ? 0 : Number(digitsOnly));
     };
 
     return (
       <div className={styles.field}>
-        <label>{label}</label>
+        {label && <label>{label}</label>}
         <div className={styles.suffixWrap}>
           <input
             type="text"
@@ -72,7 +73,7 @@ export function FormField(props: FormFieldProps) {
   const { as, label: _l, ...rest } = props;
   return (
     <div className={styles.field}>
-      <label>{label}</label>
+      {label && <label>{label}</label>}
       <input {...rest} />
     </div>
   );

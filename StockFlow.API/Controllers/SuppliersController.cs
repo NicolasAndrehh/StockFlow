@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using StockFlow.API.Data;
@@ -7,6 +8,7 @@ namespace StockFlow.API.Controllers
 {
     [Route("api/suppliers")]
     [ApiController]
+    [Authorize]
     public class SuppliersController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -24,9 +26,17 @@ namespace StockFlow.API.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Administrator")]
         public async Task<IActionResult> CreateSupplier([FromBody] Supplier supplier)
         {
-            // Validamos que el nombre del proveedor sea único
+            if (string.IsNullOrWhiteSpace(supplier.Name))
+            {
+                return BadRequest(new { message = "Error: Supplier name is required." });
+            }
+
+            supplier.Name = supplier.Name.Trim();
+
+            // Verifico que el nombre del proveedor no esté repetido
             var nameExists = await _context.Suppliers.AnyAsync(s => s.Name == supplier.Name);
             if (nameExists)
             {
@@ -40,12 +50,17 @@ namespace StockFlow.API.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = "Administrator")]
         public async Task<IActionResult> UpdateSupplier(int id, [FromBody] Supplier supplier)
         {
-            // Validamos que los IDs coincidan
             if (id != supplier.Id)
             {
                 return BadRequest(new { message = "Error: The URL ID does not match the request body ID." });
+            }
+
+            if (string.IsNullOrWhiteSpace(supplier.Name))
+            {
+                return BadRequest(new { message = "Error: Supplier name is required." });
             }
 
             var existingSupplier = await _context.Suppliers.FindAsync(id);
@@ -54,15 +69,16 @@ namespace StockFlow.API.Controllers
                 return NotFound(new { message = "Error: Supplier not found." });
             }
 
-            // Validamos que el nuevo nombre no choque con otro proveedor ya existente
-            var nameExists = await _context.Suppliers.AnyAsync(s => s.Name == supplier.Name && s.Id != id);
+            var cleanName = supplier.Name.Trim();
+
+            // Reviso que el nombre no choque con otro proveedor registrado
+            var nameExists = await _context.Suppliers.AnyAsync(s => s.Name == cleanName && s.Id != id);
             if (nameExists)
             {
                 return BadRequest(new { message = "Error: This supplier already exists." });
             }
 
-            // Actualizamos los campos
-            existingSupplier.Name = supplier.Name;
+            existingSupplier.Name = cleanName;
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Supplier updated successfully.", supplier = existingSupplier });

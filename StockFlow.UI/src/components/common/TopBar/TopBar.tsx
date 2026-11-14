@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import type { ReactNode } from 'react';
+import type { OperatingRole } from '../../features/Auth/AuthContext';
 import styles from './TopBar.module.scss';
 
 export interface TopbarLocationOption {
@@ -12,6 +13,8 @@ interface TopbarProps {
   locations?: TopbarLocationOption[];
   selectedLocationId?: number | null;
   onSelectLocation?: (location: TopbarLocationOption) => void;
+  operatingRole?: OperatingRole;
+  onSelectOperatingRole?: (role: OperatingRole) => void;
   rightSlot?: ReactNode;
 }
 
@@ -20,6 +23,8 @@ export function Topbar({
   locations,
   selectedLocationId,
   onSelectLocation,
+  operatingRole,
+  onSelectOperatingRole,
   rightSlot,
 }: TopbarProps) {
   const [open, setOpen] = useState(false);
@@ -29,7 +34,7 @@ export function Topbar({
   const currentLocation = locations?.find((l) => l.id === selectedLocationId);
   const displayLabel = currentLocation ? currentLocation.name : sedeLabel;
 
-  // Cierra el menú al hacer clic fuera o presionar Escape
+  // Cierro el selector de sede si hago clic fuera del contenedor o presiono Escape
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -76,6 +81,7 @@ export function Topbar({
                 strokeWidth="2.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                aria-hidden="true"
               >
                 <polyline points="6 9 12 15 18 9" />
               </svg>
@@ -109,6 +115,7 @@ export function Topbar({
                             strokeWidth="2.5"
                             strokeLinecap="round"
                             strokeLinejoin="round"
+                            aria-hidden="true"
                           >
                             <polyline points="20 6 9 17 4 12" />
                           </svg>
@@ -125,6 +132,39 @@ export function Topbar({
             <span className={styles.dot} />
             {sedeLabel}
           </span>
+        )}
+
+        {onSelectOperatingRole && operatingRole && (
+          <div className={styles.roleControls}>
+            <div className={styles.roleSwitch} role="group" aria-label="Operate location as Cashier or Waiter">
+              <span className={styles.roleSwitchLabel}>Operate as:</span>
+              <button
+                type="button"
+                className={`${styles.rolePill} ${operatingRole === 'Cashier' ? styles.rolePillActive : ''}`}
+                onClick={() => onSelectOperatingRole('Cashier')}
+              >
+                Cashier
+              </button>
+              <button
+                type="button"
+                className={`${styles.rolePill} ${operatingRole === 'Waiter' ? styles.rolePillActive : ''}`}
+                onClick={() => onSelectOperatingRole('Waiter')}
+              >
+                Waiter
+              </button>
+            </div>
+
+            {operatingRole !== 'Administrator' && (
+              <button
+                type="button"
+                className={styles.adminReturnBtn}
+                onClick={() => onSelectOperatingRole('Administrator')}
+                title="Return to general Administrator view"
+              >
+                ← Back to Admin View
+              </button>
+            )}
+          </div>
         )}
       </div>
       <div className={styles.right}>{rightSlot}</div>

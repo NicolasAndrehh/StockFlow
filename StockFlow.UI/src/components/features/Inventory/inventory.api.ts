@@ -18,9 +18,22 @@ export interface InventoryEntryPayload {
   quantity: number;
 }
 
+export interface FullInventoryCheckPayload {
+  locationId: number;
+  items: {
+    productId: number;
+    countedQuantity: number;
+  }[];
+}
+
 interface InventoryEntryResponse {
   message: string;
   availableQuantity: number;
+}
+
+interface FullInventoryCheckResponse {
+  message: string;
+  checkId: number;
 }
 
 export const inventoryApi = {
@@ -28,4 +41,6 @@ export const inventoryApi = {
     api.get<LocationInventoryItem[]>(`/inventory?locationId=${locationId}`),
   registerEntry: (payload: InventoryEntryPayload) =>
     api.post<InventoryEntryResponse>('/inventory/entry', payload),
+  registerFullCheck: (payload: FullInventoryCheckPayload) =>
+    api.post<FullInventoryCheckResponse>('/inventory/full-check', payload),
 };

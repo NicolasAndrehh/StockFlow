@@ -1,17 +1,15 @@
 import { useState } from 'react';
-import LocationsView from './components/features/Locations/LocationsView'; 
+import LocationsView from './components/features/Locations/LocationsView';
 import ProductTypesView from './components/features/ProductTypes/ProductTypesView';
 
 export default function App() {
-  // Estado para controlar qué pantalla se está mostrando
+  // Vista base para pruebas rápidas de componentes aislados
   const [currentView, setCurrentView] = useState<'locations' | 'productTypes'>('productTypes');
 
   return (
     <div style={{ backgroundColor: '#121212', minHeight: '100vh', padding: '20px' }}>
-      
-      {/* Menú de navegación temporal */}
       <nav style={{ marginBottom: '20px', display: 'flex', gap: '15px', paddingBottom: '15px', borderBottom: '1px solid #333' }}>
-        <button 
+        <button
           onClick={() => setCurrentView('locations')}
           style={{
             padding: '10px 20px',
@@ -20,12 +18,12 @@ export default function App() {
             border: 'none',
             borderRadius: '4px',
             cursor: 'pointer',
-            fontWeight: 'bold'
+            fontWeight: 'bold',
           }}
         >
-          Sedes
+          Locations
         </button>
-        <button 
+        <button
           onClick={() => setCurrentView('productTypes')}
           style={{
             padding: '10px 20px',
@@ -34,17 +32,15 @@ export default function App() {
             border: 'none',
             borderRadius: '4px',
             cursor: 'pointer',
-            fontWeight: 'bold'
+            fontWeight: 'bold',
           }}
         >
-          Tipos de Producto
+          Product Types
         </button>
       </nav>
 
-      {/* Renderizado condicional: Muestra el componente según el estado */}
       {currentView === 'locations' && <LocationsView />}
       {currentView === 'productTypes' && <ProductTypesView />}
-      
     </div>
   );
 }

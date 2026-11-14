@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using StockFlow.API.Data;
@@ -12,6 +14,7 @@ namespace StockFlow.API.Controllers
 
     [Route("api/tables")]
     [ApiController]
+    [Authorize]
     public class TablesController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -29,6 +32,11 @@ namespace StockFlow.API.Controllers
                 return BadRequest(new { message = "Error: A valid locationId is required." });
             }
 
+            if (!HasLocationAccess(locationId))
+            {
+                return StatusCode(403, new { message = "Error: You can only view tables for your assigned location." });
+            }
+
             var locationExists = await _context.Locations.AnyAsync(l => l.Id == locationId);
             if (!locationExists)
             {
@@ -40,7 +48,7 @@ namespace StockFlow.API.Controllers
                 .OrderBy(t => t.Number)
                 .ToListAsync();
 
-            // Si la sede aún no tiene mesas creadas, inicializamos 8 mesas por defecto
+            // Si creo una sede nueva desde el panel, le genero sus 8 mesas libres iniciales
             if (tables.Count == 0)
             {
                 var defaultTables = Enumerable.Range(1, 8).Select(num => new Table
@@ -59,6 +67,7 @@ namespace StockFlow.API.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Administrator")]
         public async Task<IActionResult> CreateTable([FromBody] Table table)
         {
             if (table.LocationId <= 0 || table.Number <= 0)
@@ -80,6 +89,7 @@ namespace StockFlow.API.Controllers
         }
 
         [HttpPut("{id}/status")]
+        [Authorize(Roles = "Administrator")]
         public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateTableStatusRequest request)
         {
             var table = await _context.Tables.FindAsync(id);
@@ -97,6 +107,18 @@ namespace StockFlow.API.Controllers
             await _context.SaveChangesAsync();
 
             return Ok(new { message = $"Table {table.Number} marked as {table.Status}.", table });
+        }
+
+        private bool HasLocationAccess(int requestedLocationId)
+        {
+            var role = User.FindFirst(ClaimTypes.Role)?.Value;
+            if (role == "Administrator")
+            {
+                return true;
+            }
+
+            var locationClaim = User.FindFirst("LocationId")?.Value;
+            return int.TryParse(locationClaim, out int userLocationId) && userLocationId == requestedLocationId;
         }
     }
 }

@@ -7,6 +7,7 @@ import { Button } from '../../common/Button/Button';
 import { Badge } from '../../common/Badge/Badge';
 import { SplitLayout } from '../../common/SplitLayout/SplitLayout';
 import { TicketSummary } from '../../common/TicketSummary/TicketSummary';
+import { StepBar } from '../../common/StepBar/StepBar';
 import { useToast } from '../../common/Toast/ToastContext';
 import { useAuth } from '../Auth/AuthContext';
 import { inventoryApi } from '../Inventory/inventory.api';
@@ -24,6 +25,13 @@ interface DraftOrderItem {
   quantity: number;
   maxStock: number;
 }
+
+const ORDER_STEPS = [
+  'Select Free Table',
+  'Consult Inventory',
+  'Register Products',
+  'Save Order',
+];
 
 export default function OrdersView() {
   const { activeLocation } = useAuth();
@@ -53,14 +61,9 @@ export default function OrdersView() {
       setTables(tbls);
       setInventory(inv);
 
-      if (selectedTableId === 0 && tbls.length > 0) {
-        const firstId = tbls[0].id;
-        setSelectedTableId(firstId);
-        setSearchParams({ tableId: String(firstId) }, { replace: true });
-      } else if (selectedTableId !== 0 && !tbls.some((t) => t.id === selectedTableId)) {
-        const fallbackId = tbls[0]?.id ?? 0;
-        setSelectedTableId(fallbackId);
-        if (fallbackId) setSearchParams({ tableId: String(fallbackId) }, { replace: true });
+      if (selectedTableId !== 0 && !tbls.some((t) => t.id === selectedTableId)) {
+        setSelectedTableId(0);
+        setSearchParams({}, { replace: true });
       }
     } catch {
       showToast('Error loading location inventory and tables.');
@@ -80,13 +83,13 @@ export default function OrdersView() {
     }
   };
 
-  // Al cambiar de sede, limpiamos el borrador y recargamos datos
+  // Cuando cambio de sede limpio el borrador y recargo mesas e inventario de esa sucursal
   useEffect(() => {
     setDraftItems([]);
     loadLocationData();
   }, [activeLocation?.id]);
 
-  // Al cambiar de mesa, cargamos la orden activa de esa mesa
+  // Al seleccionar otra mesa consulto si ya tiene un pedido abierto
   useEffect(() => {
     setDraftItems([]);
     if (selectedTableId > 0) {
@@ -98,10 +101,25 @@ export default function OrdersView() {
 
   const handleSelectTable = (tableId: number) => {
     setSelectedTableId(tableId);
-    setSearchParams({ tableId: String(tableId) });
+    if (tableId > 0) {
+      setSearchParams({ tableId: String(tableId) });
+    } else {
+      setSearchParams({});
+    }
   };
 
+  const selectedTable = tables.find((t) => t.id === selectedTableId);
+  const isTableAvailable = selectedTable?.status === 'Available';
+
   const handleAddProduct = (item: LocationInventoryItem) => {
+    if (!selectedTable) {
+      showToast('Step 1 mandatory: Please select an Available table first.');
+      return;
+    }
+    if (!isTableAvailable) {
+      showToast('New orders can only be started on an Available (Free) table.');
+      return;
+    }
     if (item.availableQuantity <= 0) {
       showToast('This product is out of stock in the current location.');
       return;
@@ -145,12 +163,16 @@ export default function OrdersView() {
       showToast('Please select a location first.');
       return;
     }
-    if (!selectedTableId) {
-      showToast('Please select a table first.');
+    if (!selectedTableId || !selectedTable) {
+      showToast('Step 1 mandatory: Please select an Available table first.');
+      return;
+    }
+    if (!isTableAvailable) {
+      showToast('Orders can only be started on an Available (Free) table.');
       return;
     }
     if (draftItems.length === 0) {
-      showToast('Please add at least one product to the order.');
+      showToast('Step 3 mandatory: Please add at least one product to the order.');
       return;
     }
 
@@ -174,8 +196,6 @@ export default function OrdersView() {
     }
   };
 
-  const selectedTable = tables.find((t) => t.id === selectedTableId);
-
   const filteredInventory = inventory.filter(
     (i) =>
       i.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -183,7 +203,16 @@ export default function OrdersView() {
       i.productTypeName.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Ítems que se pasan a tu componente TicketSummary
+  // Calculo en qué paso del flujo obligatorio de 4 pasos se encuentra el mesero
+  const currentStep = !selectedTable || !isTableAvailable
+    ? 1
+    : draftItems.length === 0
+    ? 2
+    : saving
+    ? 4
+    : 3;
+
+  // Formateo los productos en borrador y los ya guardados para mostrarlos en el resumen del ticket
   const draftTicketItems = draftItems.map((d) => ({
     id: d.productId,
     name: `${d.quantity}x ${d.name}`,
@@ -199,20 +228,30 @@ export default function OrdersView() {
 
   return (
     <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.5rem' }}>
         <h2 style={{ margin: 0 }}>
-          Take Order — {activeLocation?.name ?? 'No location'}
+          Order Taking Flow — {activeLocation?.name ?? 'No location'}
         </h2>
         <Button variant="ghost" onClick={() => navigate('/tables')}>
-          ← Back to Tables
+          ← Step 1: Table Grid
         </Button>
       </div>
+      <p className="sub">
+        Follow the 4 mandatory steps: 1. Select Free Table → 2. Consult Location Inventory → 3. Register Order Items → 4. Save Order.
+      </p>
+
+      <StepBar current={currentStep} labels={ORDER_STEPS} />
 
       <SplitLayout
         left={
           <Card>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-              <h3 style={{ margin: 0 }}>Available Inventory</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+              <div>
+                <h3 style={{ margin: 0 }}>Step 2: Available Location Inventory</h3>
+                <span style={{ fontSize: '.78rem', color: 'var(--dim)' }}>
+                  Showing real-time stock exclusively for {activeLocation?.name}
+                </span>
+              </div>
               <div style={{ width: '240px' }}>
                 <FormField
                   label=""
@@ -223,12 +262,20 @@ export default function OrdersView() {
               </div>
             </div>
 
+            {!selectedTable && (
+              <p style={{ color: 'var(--orange)', fontSize: '.85rem', marginBottom: '1rem' }}>
+                Select an Available (Free) table on the right panel (or from the Table Grid) before adding products.
+              </p>
+            )}
+
             <DataTable
               columns={['Code', 'Product', 'Type', 'Price', 'Available', '']}
               rows={filteredInventory}
+              ariaLabel="Location available inventory"
               renderRow={(item) => {
                 const inDraft = draftItems.find((d) => d.productId === item.productId)?.quantity ?? 0;
                 const remaining = item.availableQuantity - inDraft;
+                const canAdd = Boolean(selectedTable && isTableAvailable && remaining > 0);
                 return (
                   <tr key={item.productId}>
                     <td>{item.productCode}</td>
@@ -244,6 +291,7 @@ export default function OrdersView() {
                     <td>
                       <Button
                         variant="mini"
+                        disabled={!canAdd}
                         onClick={() => handleAddProduct(item)}
                       >
                         + Add
@@ -260,14 +308,14 @@ export default function OrdersView() {
             <Card>
               <FormField
                 as="select"
-                label="Operating Table"
+                label="Step 1: Operating Table"
                 value={selectedTableId === 0 ? '' : String(selectedTableId)}
                 onChange={(e) => handleSelectTable(Number(e.target.value))}
                 options={[
-                  { value: '', label: 'Select a table' },
+                  { value: '', label: 'Select an Available table' },
                   ...tables.map((t) => ({
                     value: String(t.id),
-                    label: `Table #${t.number} (${t.status})`,
+                    label: `Table #${t.number} (${t.status === 'Available' ? 'Available / Free' : 'Occupied'})`,
                   })),
                 ]}
               />
@@ -276,76 +324,87 @@ export default function OrdersView() {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
                   <span style={{ fontSize: '.85rem', color: 'var(--dim)' }}>Current Table Status:</span>
                   <Badge
-                    status={selectedTable.status === 'Available' ? 'available' : 'occupied'}
-                    label={selectedTable.status}
+                    status={isTableAvailable ? 'available' : 'occupied'}
+                    label={isTableAvailable ? 'Available (Free)' : 'Occupied'}
                   />
                 </div>
               )}
 
-              <h3 style={{ marginTop: '.5rem', marginBottom: '.5rem' }}>New Order Round</h3>
-              {draftItems.length > 0 && (
-                <div style={{ marginBottom: '.75rem', display: 'flex', flexDirection: 'column', gap: '.35rem' }}>
-                  {draftItems.map((item) => (
-                    <div
-                      key={item.productId}
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        background: 'var(--panel2)',
-                        padding: '.45rem .65rem',
-                        borderRadius: '8px',
-                        fontSize: '.85rem',
-                      }}
-                    >
-                      <span>
-                        <strong>{item.quantity}x</strong> {item.name}
-                      </span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Button variant="mini" onClick={() => handleDecreaseDraft(item.productId)}>
-                          -
-                        </Button>
-                        <Button
-                          variant="mini"
-                          onClick={() => {
-                            const invItem = inventory.find((i) => i.productId === item.productId);
-                            if (invItem) handleAddProduct(invItem);
+              {selectedTable && !isTableAvailable ? (
+                <p style={{ color: 'var(--orange)', fontSize: '.83rem', marginBottom: '.5rem' }}>
+                  Table #{selectedTable.number} is currently <strong>Occupied</strong> with an Open order. New orders can only be started on an <strong>Available</strong> table.
+                </p>
+              ) : (
+                <>
+                  <h3 style={{ marginTop: '.5rem', marginBottom: '.5rem' }}>Step 3: Order Registration (Open)</h3>
+                  {draftItems.length > 0 && (
+                    <div style={{ marginBottom: '.75rem', display: 'flex', flexDirection: 'column', gap: '.35rem' }}>
+                      {draftItems.map((item) => (
+                        <div
+                          key={item.productId}
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            background: 'var(--panel2)',
+                            padding: '.45rem .65rem',
+                            borderRadius: '8px',
+                            fontSize: '.85rem',
                           }}
                         >
-                          +
-                        </Button>
-                      </div>
+                          <span>
+                            <strong>{item.quantity}x</strong> {item.name}
+                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <Button variant="mini" onClick={() => handleDecreaseDraft(item.productId)}>
+                              -
+                            </Button>
+                            <Button
+                              variant="mini"
+                              onClick={() => {
+                                const invItem = inventory.find((i) => i.productId === item.productId);
+                                if (invItem) handleAddProduct(invItem);
+                              }}
+                            >
+                              +
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  )}
+
+                  <TicketSummary
+                    items={draftTicketItems}
+                    formatMoney={formatMoney}
+                    emptyLabel="No products added to the order yet."
+                  />
+
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '1rem' }}>
+                    <Button
+                      onClick={handleSaveOrder}
+                      disabled={saving || !isTableAvailable || draftItems.length === 0}
+                    >
+                      {saving ? 'Saving...' : 'Step 4: Save Order'}
+                    </Button>
+                    {draftItems.length > 0 && (
+                      <Button variant="ghost" onClick={() => setDraftItems([])}>
+                        Clear
+                      </Button>
+                    )}
+                  </div>
+                </>
               )}
-
-              <TicketSummary
-                items={draftTicketItems}
-                formatMoney={formatMoney}
-                emptyLabel="No products added to this round yet."
-              />
-
-              <div style={{ display: 'flex', gap: '10px', marginTop: '1rem' }}>
-                <Button onClick={handleSaveOrder}>
-                  {saving ? 'Saving...' : 'Save Order'}
-                </Button>
-                {draftItems.length > 0 && (
-                  <Button variant="ghost" onClick={() => setDraftItems([])}>
-                    Clear
-                  </Button>
-                )}
-              </div>
             </Card>
 
             {activeOrder && (
               <Card>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.5rem' }}>
-                  <h3 style={{ margin: 0 }}>Saved Table Ticket (#{activeOrder.id})</h3>
+                  <h3 style={{ margin: 0 }}>Saved Order (#{activeOrder.id})</h3>
                   <Badge status="open" label="Open Order" />
                 </div>
                 <p style={{ fontSize: '.78rem', color: 'var(--dim)', marginTop: 0, marginBottom: '.75rem' }}>
-                  Already sent to bar for Table #{activeOrder.tableNumber}
+                  Table #{activeOrder.tableNumber} · Remains Open until Cashier checkout
                 </p>
                 <TicketSummary
                   items={savedTicketItems}

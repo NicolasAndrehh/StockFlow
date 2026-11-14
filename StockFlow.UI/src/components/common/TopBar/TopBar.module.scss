@@ -2,6 +2,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .75rem;
   padding: .9rem 1.4rem;
   background: rgba(10, 10, 13, .75);
   backdrop-filter: blur(20px);
@@ -15,6 +17,7 @@
 .id {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: .85rem;
 
   .mark {
@@ -182,6 +185,73 @@
 .checkIcon {
   color: var(--cyan);
   flex-shrink: 0;
+}
+
+.roleControls {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+
+.roleSwitch {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  background: var(--panel2);
+  border: 1px solid var(--line2);
+  border-radius: 999px;
+  padding: .2rem .3rem .2rem .65rem;
+}
+
+.roleSwitchLabel {
+  font-size: .72rem;
+  color: var(--dim);
+  font-weight: 600;
+  margin-right: .2rem;
+}
+
+.rolePill {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: .75rem;
+  font-weight: 600;
+  padding: .22rem .65rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    color: var(--ink);
+  }
+}
+
+.rolePillActive {
+  background: var(--blue-tint);
+  color: var(--cyan);
+  box-shadow: 0 0 0 1px rgba(52, 224, 255, 0.35);
+}
+
+.adminReturnBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  font-family: inherit;
+  font-size: .75rem;
+  font-weight: 600;
+  padding: .3rem .75rem;
+  border-radius: 999px;
+  background: rgba(48, 209, 88, 0.12);
+  border: 1px solid rgba(48, 209, 88, 0.4);
+  color: var(--green);
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: rgba(48, 209, 88, 0.22);
+    border-color: var(--green);
+  }
 }
 
 .right {

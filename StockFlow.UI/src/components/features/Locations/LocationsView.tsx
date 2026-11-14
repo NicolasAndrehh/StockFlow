@@ -20,12 +20,14 @@ export default function LocationsView() {
     try {
       const data = await locationsApi.getAll();
       setLocations(data);
-    } catch (error) {
-      showToast('Error al cargar sedes');
+    } catch {
+      showToast('Error loading locations.');
     }
   };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const resetForm = () => {
     setEditingId(null);
@@ -38,6 +40,11 @@ export default function LocationsView() {
   };
 
   const handleSave = async () => {
+    if (!form.code.trim() || !form.name.trim() || !form.address.trim()) {
+      showToast('Please complete code, name, and address.');
+      return;
+    }
+
     try {
       if (editingId) {
         const res = await locationsApi.update(editingId, form);
@@ -61,14 +68,19 @@ export default function LocationsView() {
           <Card>
             <h3>Registered Locations</h3>
             <DataTable
-              columns={['Code', 'Name', 'Address']}
+              columns={['Code', 'Name', 'Address', '']}
               rows={locations}
+              ariaLabel="Registered locations"
               renderRow={(loc) => (
                 <tr key={loc.id}>
                   <td>{loc.code}</td>
                   <td>{loc.name}</td>
                   <td>{loc.address}</td>
-                  <td><Button variant="mini" onClick={() => handleEdit(loc)}>Edit</Button></td>
+                  <td>
+                    <Button variant="mini" onClick={() => handleEdit(loc)}>
+                      Edit
+                    </Button>
+                  </td>
                 </tr>
               )}
             />
@@ -81,20 +93,32 @@ export default function LocationsView() {
           <Card>
             <h3>{editingId ? 'Edit Location' : 'New Location'}</h3>
             <FormField
-              label="Code (unique)" placeholder="S04" value={form.code}
+              label="Code (unique)"
+              placeholder="LOC-04"
+              value={form.code}
               onChange={(e) => setForm({ ...form, code: e.target.value })}
             />
             <FormField
-              label="Name" placeholder="Uptown Branch" value={form.name}
+              label="Name"
+              placeholder="Uptown Branch"
+              value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
             />
             <FormField
-              label="Address" placeholder="123 Main St" value={form.address}
+              label="Address"
+              placeholder="123 Main St"
+              value={form.address}
               onChange={(e) => setForm({ ...form, address: e.target.value })}
             />
             <div style={{ display: 'flex', gap: '10px' }}>
-              <Button onClick={handleSave}>{editingId ? 'Update Location' : 'Save Location'}</Button>
-              {editingId && <Button variant="ghost" onClick={resetForm}>Cancel</Button>}
+              <Button onClick={handleSave}>
+                {editingId ? 'Update Location' : 'Save Location'}
+              </Button>
+              {editingId && (
+                <Button variant="ghost" onClick={resetForm}>
+                  Cancel
+                </Button>
+              )}
             </div>
           </Card>
         }

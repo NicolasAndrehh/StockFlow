@@ -1,3 +1,4 @@
+#nullable enable
 namespace StockFlow.API.Models
 {
     public class Product
@@ -8,11 +9,11 @@ namespace StockFlow.API.Models
         public decimal PurchasePrice { get; set; }
         public decimal SalePrice { get; set; }
 
-        // Foreign Key ProductType
+        // Llave foránea del tipo de producto
         public int ProductTypeId { get; set; }
         public ProductType? ProductType { get; set; }
 
-        // Foreign Key Supplier
+        // Llave foránea del proveedor asociado
         public int SupplierId { get; set; }
         public Supplier? Supplier { get; set; }
     }

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using StockFlow.API.Data;
@@ -7,6 +8,7 @@ namespace StockFlow.API.Controllers
 {
     [Route("api/locations")]
     [ApiController]
+    [Authorize]
     public class LocationsController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -19,16 +21,29 @@ namespace StockFlow.API.Controllers
         [HttpGet]
         public async Task<IActionResult> GetLocations()
         {
-            var locations = await _context.Locations.ToListAsync();
+            var locations = await _context.Locations
+                .OrderBy(l => l.Code)
+                .ToListAsync();
             return Ok(locations);
         }
 
         [HttpPost]
+        [Authorize(Roles = "Administrator")]
         public async Task<IActionResult> CreateLocation([FromBody] Location location)
         {
-            // Validación: El código de sede debe ser único
+            if (string.IsNullOrWhiteSpace(location.Code) ||
+                string.IsNullOrWhiteSpace(location.Name) ||
+                string.IsNullOrWhiteSpace(location.Address))
+            {
+                return BadRequest(new { message = "Error: Code, name, and address are required." });
+            }
+
+            location.Code = location.Code.Trim();
+            location.Name = location.Name.Trim();
+            location.Address = location.Address.Trim();
+
+            // Verifico que el código de la sede no esté repetido
             var codeExists = await _context.Locations.AnyAsync(l => l.Code == location.Code);
-            
             if (codeExists)
             {
                 return BadRequest(new { message = "Error: The location code already exists in the system." });
@@ -41,12 +56,19 @@ namespace StockFlow.API.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = "Administrator")]
         public async Task<IActionResult> UpdateLocation(int id, [FromBody] Location location)
         {
-            // Validamos que el ID de la URL coincida con el ID del body
             if (id != location.Id)
             {
                 return BadRequest(new { message = "Error: The URL ID does not match the request body ID." });
+            }
+
+            if (string.IsNullOrWhiteSpace(location.Code) ||
+                string.IsNullOrWhiteSpace(location.Name) ||
+                string.IsNullOrWhiteSpace(location.Address))
+            {
+                return BadRequest(new { message = "Error: Code, name, and address are required." });
             }
 
             var existingLocation = await _context.Locations.FindAsync(id);
@@ -55,16 +77,18 @@ namespace StockFlow.API.Controllers
                 return NotFound(new { message = "Error: Location not found." });
             }
 
-            // Validación: El código de sede debe ser único, excepto para la ubicación actual
-            var codeExists = await _context.Locations.AnyAsync(l => l.Code == location.Code && l.Id != id);
+            var cleanCode = location.Code.Trim();
+
+            // Valido que el código sea único excluyendo la sede que estoy editando
+            var codeExists = await _context.Locations.AnyAsync(l => l.Code == cleanCode && l.Id != id);
             if (codeExists)
             {
                 return BadRequest(new { message = "Error: The location code already exists in the system." });
             }
-            
-            existingLocation.Code = location.Code;
-            existingLocation.Name = location.Name;
-            existingLocation.Address = location.Address;
+
+            existingLocation.Code = cleanCode;
+            existingLocation.Name = location.Name.Trim();
+            existingLocation.Address = location.Address.Trim();
 
             await _context.SaveChangesAsync();
 

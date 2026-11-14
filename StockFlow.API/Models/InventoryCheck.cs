@@ -1,3 +1,4 @@
+#nullable enable
 namespace StockFlow.API.Models
 {
     public class InventoryCheck
@@ -5,11 +6,11 @@ namespace StockFlow.API.Models
         public int Id { get; set; }
         public DateTime CheckDate { get; set; }
 
-        // Foreign key Location (Sede)
+        // Llave foránea de la sede donde se realizó el chequeo
         public int LocationId { get; set; }
         public Location? Location { get; set; }
 
-        // Foreign key User (Usuario que hace el conteo)
+        // Llave foránea del usuario que registró el conteo
         public int UserId { get; set; }
         public User? User { get; set; }
     }
