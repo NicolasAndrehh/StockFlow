@@ -255,105 +255,111 @@ namespace StockFlow.API.Services
                 return (false, "Error: Product quantities must be greater than zero.", null);
             }
 
-            await using var transaction = await _context.Database.BeginTransactionAsync();
-            try
+            // Ejecuto la transacción manual dentro de la estrategia de reintentos de EF Core MySQL para evitar errores 500 con MySqlRetryingExecutionStrategy
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync<(bool Success, string Message, int? OrderId)>(async () =>
             {
-                var table = await _context.Tables
-                    .FirstOrDefaultAsync(t => t.Id == tableId && t.LocationId == locationId);
-
-                if (table == null)
+                _context.ChangeTracker.Clear();
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+                try
                 {
-                    return (false, "Error: The selected table does not belong to the active location.", null);
-                }
+                    var table = await _context.Tables
+                        .FirstOrDefaultAsync(t => t.Id == tableId && t.LocationId == locationId);
 
-                // Solo permito iniciar un pedido si la mesa se encuentra en estado Libre (HU-08)
-                if (table.Status != "Available")
-                {
-                    return (false, $"Error: Table #{table.Number} is currently occupied. New orders can only be started on an available table.", null);
-                }
-
-                var productIds = groupedItems.Select(i => i.ProductId).ToList();
-
-                var products = await _context.Products
-                    .AsNoTracking()
-                    .Where(p => productIds.Contains(p.Id))
-                    .ToDictionaryAsync(p => p.Id);
-
-                var inventories = await _context.LocationInventories
-                    .Where(li => li.LocationId == locationId && productIds.Contains(li.ProductId))
-                    .ToDictionaryAsync(li => li.ProductId);
-
-                foreach (var item in groupedItems)
-                {
-                    if (!products.TryGetValue(item.ProductId, out var product))
+                    if (table == null)
                     {
-                        return (false, $"Error: Product ID {item.ProductId} does not exist.", null);
+                        return (false, "Error: The selected table does not belong to the active location.", null);
                     }
 
-                    if (!inventories.TryGetValue(item.ProductId, out var inv) || inv.AvailableQuantity < item.Quantity)
+                    // Solo permito iniciar un pedido si la mesa se encuentra en estado Libre (HU-08)
+                    if (table.Status != "Available")
                     {
-                        var available = inv?.AvailableQuantity ?? 0;
-                        return (false, $"Error: Insufficient stock for '{product.Name}'. Available: {available}, Requested: {item.Quantity}.", null);
+                        return (false, $"Error: Table #{table.Number} is currently occupied. New orders can only be started on an available table.", null);
                     }
-                }
 
-                var effectiveUserId = userId;
-                if (effectiveUserId <= 0)
-                {
-                    var fallbackUser = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.LocationId == locationId && u.Role == "Waiter")
-                                       ?? await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.LocationId == locationId)
-                                       ?? await _context.Users.AsNoTracking().FirstOrDefaultAsync();
-                    effectiveUserId = fallbackUser?.Id ?? 1;
-                }
+                    var productIds = groupedItems.Select(i => i.ProductId).ToList();
 
-                var order = new Order
-                {
-                    Status = "Open",
-                    OpeningDate = DateTime.UtcNow,
-                    TableId = table.Id,
-                    UserId = effectiveUserId
-                };
+                    var products = await _context.Products
+                        .AsNoTracking()
+                        .Where(p => productIds.Contains(p.Id))
+                        .ToDictionaryAsync(p => p.Id);
 
-                _context.Orders.Add(order);
-                await _context.SaveChangesAsync();
+                    var inventories = await _context.LocationInventories
+                        .Where(li => li.LocationId == locationId && productIds.Contains(li.ProductId))
+                        .ToDictionaryAsync(li => li.ProductId);
 
-                foreach (var item in groupedItems)
-                {
-                    var product = products[item.ProductId];
-                    var inv = inventories[item.ProductId];
-
-                    inv.AvailableQuantity -= item.Quantity;
-
-                    _context.OrderDetails.Add(new OrderDetail
+                    foreach (var item in groupedItems)
                     {
-                        OrderId = order.Id,
-                        ProductId = product.Id,
-                        Quantity = item.Quantity,
-                        UnitPrice = product.SalePrice
+                        if (!products.TryGetValue(item.ProductId, out var product))
+                        {
+                            return (false, $"Error: Product ID {item.ProductId} does not exist.", null);
+                        }
+
+                        if (!inventories.TryGetValue(item.ProductId, out var inv) || inv.AvailableQuantity < item.Quantity)
+                        {
+                            var available = inv?.AvailableQuantity ?? 0;
+                            return (false, $"Error: Insufficient stock for '{product.Name}'. Available: {available}, Requested: {item.Quantity}.", null);
+                        }
+                    }
+
+                    var effectiveUserId = userId;
+                    if (effectiveUserId <= 0)
+                    {
+                        var fallbackUser = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.LocationId == locationId && u.Role == "Waiter")
+                                           ?? await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.LocationId == locationId)
+                                           ?? await _context.Users.AsNoTracking().FirstOrDefaultAsync();
+                        effectiveUserId = fallbackUser?.Id ?? 1;
+                    }
+
+                    var order = new Order
+                    {
+                        Status = "Open",
+                        OpeningDate = DateTime.UtcNow,
+                        TableId = table.Id,
+                        UserId = effectiveUserId
+                    };
+
+                    _context.Orders.Add(order);
+                    await _context.SaveChangesAsync();
+
+                    foreach (var item in groupedItems)
+                    {
+                        var product = products[item.ProductId];
+                        var inv = inventories[item.ProductId];
+
+                        inv.AvailableQuantity -= item.Quantity;
+
+                        _context.OrderDetails.Add(new OrderDetail
+                        {
+                            OrderId = order.Id,
+                            ProductId = product.Id,
+                            Quantity = item.Quantity,
+                            UnitPrice = product.SalePrice
+                        });
+                    }
+
+                    // Marco la mesa como Ocupada automáticamente al guardar el pedido (HU-08 y HU-11)
+                    table.Status = "Occupied";
+
+                    _context.AuditRecords.Add(new AuditRecord
+                    {
+                        Action = $"CREATE_ORDER:Order={order.Id}:Table={table.Number}:Loc={locationId}",
+                        Entity = "Order",
+                        Date = DateTime.UtcNow,
+                        UserId = effectiveUserId
                     });
+
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    return (true, $"Order #{order.Id} saved for Table #{table.Number}. Status is Open and table is now Occupied.", order.Id);
                 }
-
-                // Marco la mesa como Ocupada automáticamente al guardar el pedido (HU-08 y HU-11)
-                table.Status = "Occupied";
-
-                _context.AuditRecords.Add(new AuditRecord
+                catch
                 {
-                    Action = $"CREATE_ORDER:Order={order.Id}:Table={table.Number}:Loc={locationId}",
-                    Entity = "Order",
-                    Date = DateTime.UtcNow,
-                    UserId = effectiveUserId
-                });
-
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
-
-                return (true, $"Order #{order.Id} saved for Table #{table.Number}. Status is Open and table is now Occupied.", order.Id);
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
         }
 
         // Cierro el pedido, registro el pago único sin recargo, libero la mesa y genero la factura física (HU-12, HU-13, HU-14)
@@ -369,118 +375,124 @@ namespace StockFlow.API.Services
 
             var cleanMethod = paymentMethod.Trim();
 
-            await using var transaction = await _context.Database.BeginTransactionAsync();
-            try
+            // Ejecuto la transacción de cierre y facturación dentro de la estrategia de reintentos de EF Core MySQL para evitar errores 500
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync<(bool Success, string Message, CheckoutResultDto? Invoice)>(async () =>
             {
-                var order = await _context.Orders
-                    .Include(o => o.Table)
-                        .ThenInclude(t => t!.Location)
-                    .Include(o => o.User)
-                    .FirstOrDefaultAsync(o => o.Id == orderId);
-
-                if (order == null)
+                _context.ChangeTracker.Clear();
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+                try
                 {
-                    return (false, "Error: Order not found.", null);
-                }
+                    var order = await _context.Orders
+                        .Include(o => o.Table)
+                            .ThenInclude(t => t!.Location)
+                        .Include(o => o.User)
+                        .FirstOrDefaultAsync(o => o.Id == orderId);
 
-                if (order.Status != "Open")
-                {
-                    return (false, $"Error: Order #{order.Id} is already closed.", null);
-                }
-
-                var details = await _context.OrderDetails
-                    .AsNoTracking()
-                    .Include(d => d.Product)
-                    .Where(d => d.OrderId == order.Id)
-                    .ToListAsync();
-
-                if (details.Count == 0)
-                {
-                    return (false, "Error: Cannot close an order without registered products.", null);
-                }
-
-                // Calculo el total exacto sin recargos por medio de pago (HU-13)
-                var exactTotal = details.Sum(d => d.Quantity * d.UnitPrice);
-                var now = DateTime.UtcNow;
-
-                var payment = new Payment
-                {
-                    OrderId = order.Id,
-                    UserId = cashierUserId,
-                    PaymentMethod = cleanMethod,
-                    AmountPaid = exactTotal,
-                    PaymentDate = now
-                };
-
-                _context.Payments.Add(payment);
-                await _context.SaveChangesAsync();
-
-                var invoiceNumber = $"INV-{order.Id:D4}-{payment.Id:D4}";
-                var invoice = new Invoice
-                {
-                    PaymentId = payment.Id,
-                    InvoiceNumber = invoiceNumber,
-                    IssuedDate = now
-                };
-
-                _context.Invoices.Add(invoice);
-
-                // Paso el pedido a Cerrado y libero la mesa para nuevos clientes (HU-12)
-                order.Status = "Closed";
-                if (order.Table != null)
-                {
-                    order.Table.Status = "Available";
-                }
-
-                _context.AuditRecords.Add(new AuditRecord
-                {
-                    Action = $"CLOSE_ORDER:Order={order.Id}:Method={cleanMethod}:Total={exactTotal}",
-                    Entity = "Invoice",
-                    Date = now,
-                    UserId = cashierUserId
-                });
-
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
-
-                var cashier = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == cashierUserId);
-
-                // Si el pago fue en Efectivo, ejecuto el Algoritmo Voraz para desglosar la combinación mínima de billetes/monedas COP en la factura física (HU-13 / HU-14)
-                var cashBreakdown = cleanMethod == "Cash"
-                    ? StockFlowAlgorithms.ComputeGreedyCashBreakdown(payment.AmountPaid)
-                    : new List<CashDenominationDto>();
-
-                var dto = new CheckoutResultDto
-                {
-                    OrderId = order.Id,
-                    TableNumber = order.Table?.Number ?? 0,
-                    LocationName = order.Table?.Location?.Name ?? "Location",
-                    WaiterName = order.User?.Name ?? "Waiter",
-                    CashierName = cashier?.Name ?? "Cashier",
-                    InvoiceNumber = invoice.InvoiceNumber,
-                    IssuedDate = invoice.IssuedDate,
-                    PaymentMethod = payment.PaymentMethod,
-                    TotalPaid = payment.AmountPaid,
-                    Items = details.Select(d => new InvoiceLineDto
+                    if (order == null)
                     {
-                        Id = d.Id,
-                        ProductId = d.ProductId,
-                        ProductCode = d.Product?.Code ?? "",
-                        ProductName = d.Product?.Name ?? "Product",
-                        Quantity = d.Quantity,
-                        UnitPrice = d.UnitPrice,
-                        Subtotal = d.Quantity * d.UnitPrice
-                    }).ToList(),
-                    CashBreakdown = cashBreakdown
-                };
+                        return (false, "Error: Order not found.", null);
+                    }
 
-                return (true, $"Order #{order.Id} closed and physical invoice {invoice.InvoiceNumber} generated.", dto);
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+                    if (order.Status != "Open")
+                    {
+                        return (false, $"Error: Order #{order.Id} is already closed.", null);
+                    }
+
+                    var details = await _context.OrderDetails
+                        .AsNoTracking()
+                        .Include(d => d.Product)
+                        .Where(d => d.OrderId == order.Id)
+                        .ToListAsync();
+
+                    if (details.Count == 0)
+                    {
+                        return (false, "Error: Cannot close an order without registered products.", null);
+                    }
+
+                    // Calculo el total exacto sin recargos por medio de pago (HU-13)
+                    var exactTotal = details.Sum(d => d.Quantity * d.UnitPrice);
+                    var now = DateTime.UtcNow;
+
+                    var payment = new Payment
+                    {
+                        OrderId = order.Id,
+                        UserId = cashierUserId,
+                        PaymentMethod = cleanMethod,
+                        AmountPaid = exactTotal,
+                        PaymentDate = now
+                    };
+
+                    _context.Payments.Add(payment);
+                    await _context.SaveChangesAsync();
+
+                    var invoiceNumber = $"INV-{order.Id:D4}-{payment.Id:D4}";
+                    var invoice = new Invoice
+                    {
+                        PaymentId = payment.Id,
+                        InvoiceNumber = invoiceNumber,
+                        IssuedDate = now
+                    };
+
+                    _context.Invoices.Add(invoice);
+
+                    // Paso el pedido a Cerrado y libero la mesa para nuevos clientes (HU-12)
+                    order.Status = "Closed";
+                    if (order.Table != null)
+                    {
+                        order.Table.Status = "Available";
+                    }
+
+                    _context.AuditRecords.Add(new AuditRecord
+                    {
+                        Action = $"CLOSE_ORDER:Order={order.Id}:Method={cleanMethod}:Total={exactTotal}",
+                        Entity = "Invoice",
+                        Date = now,
+                        UserId = cashierUserId
+                    });
+
+                    var cashier = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == cashierUserId);
+
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    // Si el pago fue en Efectivo, ejecuto el Algoritmo Voraz para desglosar la combinación mínima de billetes/monedas COP en la factura física (HU-13 / HU-14)
+                    var cashBreakdown = cleanMethod == "Cash"
+                        ? StockFlowAlgorithms.ComputeGreedyCashBreakdown(payment.AmountPaid)
+                        : new List<CashDenominationDto>();
+
+                    var dto = new CheckoutResultDto
+                    {
+                        OrderId = order.Id,
+                        TableNumber = order.Table?.Number ?? 0,
+                        LocationName = order.Table?.Location?.Name ?? "Location",
+                        WaiterName = order.User?.Name ?? "Waiter",
+                        CashierName = cashier?.Name ?? "Cashier",
+                        InvoiceNumber = invoice.InvoiceNumber,
+                        IssuedDate = invoice.IssuedDate,
+                        PaymentMethod = payment.PaymentMethod,
+                        TotalPaid = payment.AmountPaid,
+                        Items = details.Select(d => new InvoiceLineDto
+                        {
+                            Id = d.Id,
+                            ProductId = d.ProductId,
+                            ProductCode = d.Product?.Code ?? "",
+                            ProductName = d.Product?.Name ?? "Product",
+                            Quantity = d.Quantity,
+                            UnitPrice = d.UnitPrice,
+                            Subtotal = d.Quantity * d.UnitPrice
+                        }).ToList(),
+                        CashBreakdown = cashBreakdown
+                    };
+
+                    return (true, $"Order #{order.Id} closed and physical invoice {invoice.InvoiceNumber} generated.", dto);
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
         }
 
         // Consulto los datos de la factura física de un pedido ya cerrado para visualizarla o reimprimirla (HU-14)
